@@ -1,0 +1,34 @@
+[[assets]]
+symbol = "GLD"
+name = "Gold ETF"
+asset_class = "commodity_etf"
+price_symbol = "GLD"
+trade_symbol = "GLD"
+
+[[assets]]
+symbol = "SLV"
+name = "Silver ETF"
+asset_class = "commodity_etf"
+price_symbol = "SLV"
+trade_symbol = "SLV"
+
+[[assets]]
+symbol = "SMH"
+name = "VanEck Semiconductor ETF"
+asset_class = "equity_etf"
+price_symbol = "SMH"
+trade_symbol = "SMH"
+
+[[assets]]
+symbol = "QQQ"
+name = "Nasdaq 100 ETF"
+asset_class = "equity_etf"
+price_symbol = "QQQ"
+trade_symbol = "QQQ"
+
+[[assets]]
+symbol = "SPY"
+name = "S&P 500 ETF"
+asset_class = "equity_etf"
+price_symbol = "SPY"
+trade_symbol = "SPY"

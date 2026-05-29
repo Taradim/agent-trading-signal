@@ -88,3 +88,24 @@ def test_sma200_entry_filter_prefers_cash_when_no_asset_is_above_sma200() -> Non
 
     assert result.allocation == {"CASH": 1.0}
     assert result.regime == "cash_filter"
+
+
+def test_entry_min_bullish_points_can_require_stronger_absolute_trend() -> None:
+    length = 260
+    fading_but_above_sma200 = [100.0] * 200 + [200.0] * 40 + [130.0] * 20
+    prices = price_frame(
+        {
+            "A": fading_but_above_sma200,
+            "B": compound(120, -0.002, length),
+            "C": compound(110, -0.002, length),
+        }
+    )
+
+    result = evaluate_relative_strength(
+        prices,
+        ASSETS,
+        CONFIG.model_copy(update={"entry_min_bullish_points": 2}),
+    )
+
+    assert result.allocation == {"CASH": 1.0}
+    assert result.regime == "cash_filter"

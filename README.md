@@ -15,6 +15,29 @@ financial advice and it does not place orders.
 
 ## Strategy Summary
 
+The current recommended research/live universe is
+[`config/universe_recommended.toml`](config/universe_recommended.toml):
+
+- Bitcoin (`BTC-USD`)
+- Gold ETF (`GLD`)
+- Silver ETF (`SLV`)
+- Semiconductor ETF (`SMH`)
+- Nasdaq 100 ETF (`QQQ`)
+- S&P 500 ETF (`SPY`)
+
+This keeps the strongest finding from the research sweep: use the core ETF set
+plus Bitcoin, exclude Ethereum, and avoid adding global country ETFs unless a
+future test shows a clear benefit.
+
+The recommended backtest configuration is
+[`config/strategy_recommended.toml`](config/strategy_recommended.toml). It keeps
+the same simple equal-weight allocation rules, requires an asset to be above
+EMA35, SMA100, and SMA200 before it can become a leader, and uses a biweekly
+decision frequency in research because the core ETF + BTC sweep showed better
+returns and a better CAGR/drawdown tradeoff than the looser weekly variants. It
+also uses a strict leader threshold, so split allocations happen only on exact
+relative-strength ties.
+
 The initial universe is defined in [`config/universe.toml`](config/universe.toml):
 
 - Bitcoin (`BTC-USD`)
@@ -27,6 +50,19 @@ The initial universe is defined in [`config/universe.toml`](config/universe.toml
 
 All research tickers are USD-based to keep the relative-strength matrix clean.
 Execution tickers can later be mapped to Interactive Brokers instruments.
+
+Additional research universes are provided for longer-window and global tests:
+
+- [`config/universe_core_etf_2010.toml`](config/universe_core_etf_2010.toml):
+  GLD, SLV, SMH, QQQ, and SPY;
+- [`config/universe_global_etf_2010.toml`](config/universe_global_etf_2010.toml):
+  the core ETF set plus USD-listed France, Germany, UK, Japan, Hong Kong, and
+  South Korea ETFs;
+- [`config/universe_global_usd.toml`](config/universe_global_usd.toml):
+  the global ETF set plus BTC and ETH.
+
+The 2010 ETF universes intentionally exclude BTC and ETH because reliable Yahoo
+daily history for those assets does not reach back to 2010.
 
 ### Absolute Trend Filter
 
@@ -57,6 +93,10 @@ treating flat ranges as meaningful wins or losses.
 By default, the model also refuses new entries in assets trading below their own
 SMA 200. This keeps relative winners that are still in long-term absolute
 downtrend from becoming portfolio leaders.
+
+Research scenarios can also require an asset to pass at least two or all three
+absolute trend filters before it can become a leader. The production default
+stays at one positive trend point plus the SMA 200 filter.
 
 ### Allocation Rules
 
@@ -149,6 +189,49 @@ To compare the default research scenarios and create a formatted Excel workbook:
 uv run trading-signal compare \
   --prices data/market/prices.csv \
   --out reports/strategy_analysis.xlsx
+```
+
+To run a broader scenario sweep for research:
+
+```bash
+uv run trading-signal compare \
+  --prices data/market/prices.csv \
+  --research \
+  --out reports/research_scenarios.xlsx
+```
+
+To run the recommended core ETF + BTC sweep:
+
+```bash
+uv run trading-signal download-prices \
+  --universe config/universe_recommended.toml \
+  --strategy-config config/strategy_recommended.toml \
+  --start 2014-01-01 \
+  --out data/market/recommended_prices.csv
+
+uv run trading-signal compare \
+  --universe config/universe_recommended.toml \
+  --strategy-config config/strategy_recommended.toml \
+  --prices data/market/recommended_prices.csv \
+  --research \
+  --out reports/research_recommended_core_btc.xlsx
+```
+
+To run a longer ETF-only sweep from 2010:
+
+```bash
+uv run trading-signal download-prices \
+  --universe config/universe_core_etf_2010.toml \
+  --strategy-config config/strategy_2010.toml \
+  --start 2008-01-01 \
+  --out data/market/core_etf_2010_prices.csv
+
+uv run trading-signal compare \
+  --universe config/universe_core_etf_2010.toml \
+  --strategy-config config/strategy_2010.toml \
+  --prices data/market/core_etf_2010_prices.csv \
+  --research \
+  --out reports/research_core_etf_2010.xlsx
 ```
 
 The default backtest starts on `2020-01-01` and uses a lookback buffer so moving

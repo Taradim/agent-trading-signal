@@ -47,6 +47,31 @@ portfolio-selection step rejects it.
 If no active asset is above its SMA 200 and the full cash-defense rule has not
 triggered, the target allocation becomes cash by entry filter.
 
+The default production setting requires one positive absolute trend point, which
+matches the SMA 200 filter. Research scenarios can raise this threshold to two
+or three positive trend points to test stricter absolute-trend confirmation.
+
+## Research Universes
+
+The recommended live-research universe is `universe_recommended.toml`: BTC,
+GLD, SLV, SMH, QQQ, and SPY. It intentionally excludes ETH and global country
+ETFs because the current research sweep shows better performance and cleaner
+drawdown behavior with the core ETF set plus Bitcoin.
+
+The recommended research configuration requires the leader to be above EMA35,
+SMA100, and SMA200, uses a strict leader threshold, and uses a biweekly decision
+frequency. Live monitoring can still run weekly, but this configuration records
+the current best backtested execution cadence for the recommended universe.
+
+Additional research universes are available for longer-window tests:
+
+- `universe_core_etf_2010.toml` removes crypto so the backtest can start in
+  2010;
+- `universe_global_etf_2010.toml` adds USD-listed country ETF proxies for
+  France, Germany, UK, Japan, Hong Kong, and South Korea;
+- `universe_global_usd.toml` combines the global ETF set with BTC and ETH, but
+  naturally starts later because ETH history begins later.
+
 ## Range Handling
 
 Many neutral pairs imply range or transition behavior. The report should lower
@@ -85,3 +110,5 @@ dates.
 - Should crypto weekend data affect the Friday signal, or only Friday closes?
 - Should reports include chart images or stay Markdown-only at first?
 - Which notification channel should be used for weekly operation?
+- Which stricter absolute-trend threshold, if any, survives out-of-sample data
+  without overfitting to the 2020-2026 window?

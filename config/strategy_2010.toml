@@ -11,7 +11,7 @@ require_above_sma200_for_entries = true
 entry_min_bullish_points = 1
 
 [backtest]
-start = "2020-01-01"
+start = "2010-01-01"
 initial_capital = 10000.0
 decision_frequency = "W-FRI"
 execution_lag_business_days = 1
@@ -19,4 +19,4 @@ transaction_cost_bps = 5.0
 slippage_bps = 5.0
 min_holding_days = 28
 lookback_buffer_days = 500
-benchmarks = ["SPY", "QQQ", "SMH", "BTC"]
+benchmarks = ["SPY", "QQQ", "SMH", "GLD"]

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import Any
 
 import pandas as pd
 
@@ -18,6 +19,8 @@ class ScenarioDefinition:
     name: str
     require_above_sma200_for_entries: bool
     excluded_symbols: tuple[str, ...] = ()
+    signal_updates: dict[str, Any] = field(default_factory=dict)
+    backtest_updates: dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -31,6 +34,7 @@ def default_scenarios() -> list[ScenarioDefinition]:
         ScenarioDefinition(
             name="Baseline",
             require_above_sma200_for_entries=False,
+            signal_updates={"entry_min_bullish_points": 1},
         ),
         ScenarioDefinition(
             name="SMA200 filter",
@@ -40,6 +44,98 @@ def default_scenarios() -> list[ScenarioDefinition]:
             name="SMA200 ex ETH/SLV",
             require_above_sma200_for_entries=True,
             excluded_symbols=("ETH", "SLV"),
+        ),
+    ]
+
+
+def research_scenarios() -> list[ScenarioDefinition]:
+    return [
+        *default_scenarios(),
+        ScenarioDefinition(
+            name="SMA200 ex ETH",
+            require_above_sma200_for_entries=True,
+            excluded_symbols=("ETH",),
+        ),
+        ScenarioDefinition(
+            name="SMA200 ex ETH wider ties",
+            require_above_sma200_for_entries=True,
+            excluded_symbols=("ETH",),
+            signal_updates={"tie_tolerance": 2},
+        ),
+        ScenarioDefinition(
+            name="SMA200 ex ETH trend 2/3",
+            require_above_sma200_for_entries=True,
+            excluded_symbols=("ETH",),
+            signal_updates={"entry_min_bullish_points": 2},
+        ),
+        ScenarioDefinition(
+            name="SMA200 ex ETH monthly",
+            require_above_sma200_for_entries=True,
+            excluded_symbols=("ETH",),
+            backtest_updates={"decision_frequency": "ME"},
+        ),
+        ScenarioDefinition(
+            name="SMA200 ex SLV",
+            require_above_sma200_for_entries=True,
+            excluded_symbols=("SLV",),
+        ),
+        ScenarioDefinition(
+            name="SMA200 trend 2/3",
+            require_above_sma200_for_entries=True,
+            signal_updates={"entry_min_bullish_points": 2},
+        ),
+        ScenarioDefinition(
+            name="SMA200 trend 3/3",
+            require_above_sma200_for_entries=True,
+            signal_updates={"entry_min_bullish_points": 3},
+        ),
+        ScenarioDefinition(
+            name="SMA200 strict leader",
+            require_above_sma200_for_entries=True,
+            signal_updates={"tie_tolerance": 0},
+        ),
+        ScenarioDefinition(
+            name="SMA200 wider ties",
+            require_above_sma200_for_entries=True,
+            signal_updates={"tie_tolerance": 2},
+        ),
+        ScenarioDefinition(
+            name="SMA200 max 2 leaders",
+            require_above_sma200_for_entries=True,
+            signal_updates={"max_leaders": 2},
+        ),
+        ScenarioDefinition(
+            name="SMA200 biweekly",
+            require_above_sma200_for_entries=True,
+            backtest_updates={"decision_frequency": "2W-FRI"},
+        ),
+        ScenarioDefinition(
+            name="SMA200 monthly",
+            require_above_sma200_for_entries=True,
+            backtest_updates={"decision_frequency": "ME"},
+        ),
+        ScenarioDefinition(
+            name="SMA200 calmer ratios",
+            require_above_sma200_for_entries=True,
+            signal_updates={"ratio_deadband": 0.005, "slope_deadband": 0.001},
+        ),
+        ScenarioDefinition(
+            name="SMA200 ex ETH/SLV trend 2/3",
+            require_above_sma200_for_entries=True,
+            excluded_symbols=("ETH", "SLV"),
+            signal_updates={"entry_min_bullish_points": 2},
+        ),
+        ScenarioDefinition(
+            name="SMA200 ex ETH/SLV wider ties",
+            require_above_sma200_for_entries=True,
+            excluded_symbols=("ETH", "SLV"),
+            signal_updates={"tie_tolerance": 2},
+        ),
+        ScenarioDefinition(
+            name="SMA200 ex ETH/SLV monthly",
+            require_above_sma200_for_entries=True,
+            excluded_symbols=("ETH", "SLV"),
+            backtest_updates={"decision_frequency": "ME"},
         ),
     ]
 
@@ -54,18 +150,30 @@ def run_scenarios(
     scenarios = scenario_definitions or default_scenarios()
     results: list[ScenarioBacktest] = []
     for scenario in scenarios:
+        if not _scenario_applies_to_universe(scenario, universe):
+            continue
         assets = universe.active_assets(list(scenario.excluded_symbols))
-        scenario_signal_config = signal_config.model_copy(
-            update={"require_above_sma200_for_entries": scenario.require_above_sma200_for_entries}
-        )
+        signal_updates = {
+            "require_above_sma200_for_entries": scenario.require_above_sma200_for_entries,
+            **scenario.signal_updates,
+        }
+        scenario_signal_config = signal_config.model_copy(update=signal_updates)
+        scenario_backtest_config = backtest_config.model_copy(update=scenario.backtest_updates)
         result = run_weekly_backtest(
             prices=prices,
             assets=assets,
             signal_config=scenario_signal_config,
-            backtest_config=backtest_config,
+            backtest_config=scenario_backtest_config,
         )
         results.append(ScenarioBacktest(definition=scenario, result=result))
     return results
+
+
+def _scenario_applies_to_universe(
+    scenario: ScenarioDefinition,
+    universe: UniverseConfig,
+) -> bool:
+    return set(scenario.excluded_symbols).issubset(universe.symbols)
 
 
 def scenario_summary_frame(scenarios: list[ScenarioBacktest]) -> pd.DataFrame:
@@ -83,6 +191,9 @@ def scenario_summary_frame(scenarios: list[ScenarioBacktest]) -> pd.DataFrame:
                 "Total Return": metrics.total_return,
                 "CAGR": metrics.cagr,
                 "Max Drawdown": metrics.max_drawdown,
+                "CAGR / Max Drawdown": metrics.cagr / abs(metrics.max_drawdown)
+                if metrics.max_drawdown
+                else 0.0,
                 "Volatility": metrics.volatility,
                 "Trades": metrics.trade_count,
                 "Average Turnover": metrics.average_turnover,

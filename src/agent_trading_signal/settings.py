@@ -63,6 +63,7 @@ class SignalConfig(BaseModel):
     tie_tolerance: int = Field(default=1, ge=0)
     max_leaders: int = Field(default=4, ge=1)
     require_above_sma200_for_entries: bool = True
+    entry_min_bullish_points: int = Field(default=1, ge=1, le=3)
 
     @model_validator(mode="after")
     def validate_windows(self) -> SignalConfig:
