@@ -47,6 +47,10 @@ portfolio-selection step rejects it.
 If no active asset is above its SMA 200 and the full cash-defense rule has not
 triggered, the target allocation becomes cash by entry filter.
 
+The default production setting requires one positive absolute trend point, which
+matches the SMA 200 filter. Research scenarios can raise this threshold to two
+or three positive trend points to test stricter absolute-trend confirmation.
+
 ## Range Handling
 
 Many neutral pairs imply range or transition behavior. The report should lower
@@ -85,3 +89,5 @@ dates.
 - Should crypto weekend data affect the Friday signal, or only Friday closes?
 - Should reports include chart images or stay Markdown-only at first?
 - Which notification channel should be used for weekly operation?
+- Which stricter absolute-trend threshold, if any, survives out-of-sample data
+  without overfitting to the 2020-2026 window?

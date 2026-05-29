@@ -58,6 +58,10 @@ By default, the model also refuses new entries in assets trading below their own
 SMA 200. This keeps relative winners that are still in long-term absolute
 downtrend from becoming portfolio leaders.
 
+Research scenarios can also require an asset to pass at least two or all three
+absolute trend filters before it can become a leader. The production default
+stays at one positive trend point plus the SMA 200 filter.
+
 ### Allocation Rules
 
 The portfolio uses equal-weight discrete allocations:
@@ -149,6 +153,15 @@ To compare the default research scenarios and create a formatted Excel workbook:
 uv run trading-signal compare \
   --prices data/market/prices.csv \
   --out reports/strategy_analysis.xlsx
+```
+
+To run a broader scenario sweep for research:
+
+```bash
+uv run trading-signal compare \
+  --prices data/market/prices.csv \
+  --research \
+  --out reports/research_scenarios.xlsx
 ```
 
 The default backtest starts on `2020-01-01` and uses a lookback buffer so moving

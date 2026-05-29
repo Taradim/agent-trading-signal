@@ -201,10 +201,7 @@ def _rank_assets(
 
 
 def _select_leaders(ranks: list[AssetRank], config: SignalConfig) -> list[str]:
-    if config.require_above_sma200_for_entries:
-        eligible = [rank for rank in ranks if rank.trend.above_sma200]
-    else:
-        eligible = [rank for rank in ranks if not rank.trend.is_downtrend]
+    eligible = [rank for rank in ranks if _entry_eligible(rank, config)]
     if not eligible:
         return ["CASH"]
 
@@ -213,6 +210,12 @@ def _select_leaders(ranks: list[AssetRank], config: SignalConfig) -> list[str]:
         rank.symbol for rank in eligible if best_score - rank.net_score <= config.tie_tolerance
     ]
     return leaders[: config.max_leaders]
+
+
+def _entry_eligible(rank: AssetRank, config: SignalConfig) -> bool:
+    if config.require_above_sma200_for_entries and not rank.trend.above_sma200:
+        return False
+    return rank.trend.bullish_points >= config.entry_min_bullish_points
 
 
 def _equal_weight(symbols: list[str]) -> dict[str, float]:
@@ -259,6 +262,17 @@ def _build_warnings(
         rejected = [asset.symbol for asset in assets if not trends[asset.symbol].above_sma200]
         if rejected and len(rejected) < len(assets):
             warnings.append("SMA200 entry filter rejects: " + ", ".join(rejected))
+    if config.entry_min_bullish_points > 1:
+        rejected = [
+            asset.symbol
+            for asset in assets
+            if trends[asset.symbol].bullish_points < config.entry_min_bullish_points
+        ]
+        if rejected and len(rejected) < len(assets):
+            warnings.append(
+                f"Absolute trend entry filter rejects assets below "
+                f"{config.entry_min_bullish_points}/3 trend points: " + ", ".join(rejected)
+            )
     return warnings
 
 

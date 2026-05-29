@@ -9,7 +9,7 @@ import typer
 
 from agent_trading_signal.backtest.engine import run_weekly_backtest
 from agent_trading_signal.backtest.export import write_equity_curve, write_trades
-from agent_trading_signal.backtest.scenarios import run_scenarios
+from agent_trading_signal.backtest.scenarios import research_scenarios, run_scenarios
 from agent_trading_signal.data.csv_prices import load_price_csv, save_price_csv
 from agent_trading_signal.data.yfinance_provider import download_adjusted_closes
 from agent_trading_signal.reporting.excel import write_scenario_workbook
@@ -170,6 +170,10 @@ def compare(
         bool,
         typer.Option(help="Download prices from yfinance instead of reading CSV."),
     ] = False,
+    research: Annotated[
+        bool,
+        typer.Option(help="Include extended research scenarios."),
+    ] = False,
 ) -> None:
     """Compare default strategy scenarios and write a formatted Excel workbook."""
     universe_config = load_universe(universe)
@@ -187,6 +191,7 @@ def compare(
         universe=universe_config,
         signal_config=config.signal,
         backtest_config=config.backtest,
+        scenario_definitions=research_scenarios() if research else None,
     )
     write_scenario_workbook(scenarios, out)
     typer.echo(f"Wrote scenario workbook to {out}")

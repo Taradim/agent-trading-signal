@@ -72,24 +72,27 @@ def _write_dashboard(
     equity: pd.DataFrame,
     drawdown: pd.DataFrame,
 ) -> None:
-    _title(sheet, "A1:M1", "Agent Trading Signal - Strategy Analysis")
+    last_summary_col = _column_letter(len(summary.columns))
+    _title(sheet, f"A1:{last_summary_col}1", "Agent Trading Signal - Strategy Analysis")
     _write_frame(sheet, summary, start_row=3, start_col=1)
     _add_table(sheet, 3, 1, len(summary) + 1, len(summary.columns), "ScenarioSummary")
     _format_columns(sheet, summary, header_row=3)
     sheet.freeze_panes = "A4"
 
+    note_start_row = len(summary) + 6
+    note_end_row = note_start_row + 3
     note = (
-        "Interpretation: the SMA200 entry filter improves both return and drawdown versus "
-        "the baseline. Excluding ETH and SLV improves this sample further, mostly by avoiding "
-        "the largest ETH/SLV drawdown events. The Trades tab color-codes realized outcomes and "
-        "conviction. This is research output, not a finalized production rule."
+        "Interpretation: compare scenarios by return, drawdown, turnover, and time in cash; "
+        "do not optimize on return alone. The Trades tab color-codes realized outcomes and "
+        "conviction so the largest winners and losers can be audited. This is research output, "
+        "not a finalized production rule."
     )
-    sheet.merge_cells("A9:M12")
-    cell = sheet["A9"]
+    sheet.merge_cells(f"A{note_start_row}:{last_summary_col}{note_end_row}")
+    cell = sheet[f"A{note_start_row}"]
     cell.value = note
     cell.fill = PatternFill("solid", fgColor=NOTE_FILL)
     cell.alignment = Alignment(wrap_text=True, vertical="top")
-    for row in range(9, 13):
+    for row in range(note_start_row, note_end_row + 1):
         sheet.row_dimensions[row].height = 23
 
     widths = {
@@ -106,12 +109,16 @@ def _write_dashboard(
         "K": 16,
         "L": 13,
         "M": 15,
+        "N": 16,
     }
     _set_widths(sheet, widths)
 
     if not equity.empty and not drawdown.empty:
-        sheet["A14"] = "Charts use monthly observations to keep the workbook responsive."
-        sheet["A14"].font = Font(italic=True, color="555555")
+        chart_note_row = note_end_row + 2
+        sheet[f"A{chart_note_row}"] = (
+            "Charts use monthly observations to keep the workbook responsive."
+        )
+        sheet[f"A{chart_note_row}"].font = Font(italic=True, color="555555")
 
 
 def _write_table_sheet(sheet, title: str, frame: pd.DataFrame, table_name: str) -> None:

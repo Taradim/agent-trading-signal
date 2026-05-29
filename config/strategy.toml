@@ -8,6 +8,7 @@ slope_deadband = 0.0005
 tie_tolerance = 1
 max_leaders = 4
 require_above_sma200_for_entries = true
+entry_min_bullish_points = 1
 
 [backtest]
 start = "2020-01-01"
