@@ -7,7 +7,7 @@ from typing import Literal
 import pandas as pd
 
 PairSignal = Literal["win", "loss", "neutral"]
-Regime = Literal["cash_defense", "clear_trend", "transition", "range"]
+Regime = Literal["cash_defense", "cash_filter", "clear_trend", "transition", "range"]
 Conviction = Literal["high", "medium", "low"]
 
 

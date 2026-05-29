@@ -4,6 +4,7 @@ from agent_trading_signal.domain import BacktestResult, SignalResult
 
 REGIME_LABELS = {
     "cash_defense": "cash defense",
+    "cash_filter": "cash by entry filter",
     "clear_trend": "clear trend",
     "transition": "transition",
     "range": "range / unclear leadership",
@@ -124,6 +125,11 @@ def _quick_read(result: SignalResult) -> str:
         return (
             "Every tracked asset is below EMA35, SMA100, and SMA200. "
             "The model therefore prefers 100% cash."
+        )
+    if result.regime == "cash_filter":
+        return (
+            "No active asset passes the entry filter. The model therefore prefers cash "
+            "until at least one asset reclaims its SMA200."
         )
 
     leaders = ", ".join(result.leaders)

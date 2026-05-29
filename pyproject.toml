@@ -5,6 +5,7 @@ description = "Weekly relative-strength decision support for a multi-asset inves
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "openpyxl>=3.1.5",
     "pandas>=2.3.0",
     "pydantic>=2.10.0",
     "pydantic-settings>=2.7.0",

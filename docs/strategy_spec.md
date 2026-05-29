@@ -38,6 +38,15 @@ For each ratio `A / B`, the signal for A versus B uses four criteria:
 The ratio is a win when the score is clearly positive, a loss when it is clearly
 negative, and neutral when the evidence is too close to call.
 
+## SMA200 Entry Filter
+
+By default, an asset cannot become a new target allocation while it trades below
+its own SMA 200. The relative-strength matrix can still rank that asset, but the
+portfolio-selection step rejects it.
+
+If no active asset is above its SMA 200 and the full cash-defense rule has not
+triggered, the target allocation becomes cash by entry filter.
+
 ## Range Handling
 
 Many neutral pairs imply range or transition behavior. The report should lower

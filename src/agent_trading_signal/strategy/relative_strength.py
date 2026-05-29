@@ -201,7 +201,10 @@ def _rank_assets(
 
 
 def _select_leaders(ranks: list[AssetRank], config: SignalConfig) -> list[str]:
-    eligible = [rank for rank in ranks if not rank.trend.is_downtrend]
+    if config.require_above_sma200_for_entries:
+        eligible = [rank for rank in ranks if rank.trend.above_sma200]
+    else:
+        eligible = [rank for rank in ranks if not rank.trend.is_downtrend]
     if not eligible:
         return ["CASH"]
 
@@ -221,7 +224,7 @@ def _equal_weight(symbols: list[str]) -> dict[str, float]:
 
 def _classify_regime(ranks: list[AssetRank], leaders: list[str]) -> tuple[str, str]:
     if leaders == ["CASH"]:
-        return "cash_defense", "high"
+        return "cash_filter", "medium"
 
     leader_set = set(leaders)
     leader_ranks = [rank for rank in ranks if rank.symbol in leader_set]
@@ -252,6 +255,10 @@ def _build_warnings(
     bearish_assets = [asset.symbol for asset in assets if trends[asset.symbol].is_downtrend]
     if bearish_assets and len(bearish_assets) < len(assets):
         warnings.append("Some assets are in absolute downtrend: " + ", ".join(bearish_assets))
+    if config.require_above_sma200_for_entries:
+        rejected = [asset.symbol for asset in assets if not trends[asset.symbol].above_sma200]
+        if rejected and len(rejected) < len(assets):
+            warnings.append("SMA200 entry filter rejects: " + ", ".join(rejected))
     return warnings
 
 
