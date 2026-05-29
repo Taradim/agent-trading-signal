@@ -54,6 +54,10 @@ Each ratio is scored with:
 The ratio has a small deadband around moving averages and slopes. This avoids
 treating flat ranges as meaningful wins or losses.
 
+By default, the model also refuses new entries in assets trading below their own
+SMA 200. This keeps relative winners that are still in long-term absolute
+downtrend from becoming portfolio leaders.
+
 ### Allocation Rules
 
 The portfolio uses equal-weight discrete allocations:
@@ -125,11 +129,39 @@ uv run trading-signal signal --download --out reports/latest-signal.md
 ```bash
 uv run trading-signal backtest \
   --prices data/market/prices.csv \
-  --out reports/backtest.md
+  --out reports/backtest.md \
+  --equity-out reports/equity_curve.csv \
+  --trades-out reports/trades.csv
+```
+
+To test a narrower universe without editing the TOML file:
+
+```bash
+uv run trading-signal backtest \
+  --prices data/market/prices.csv \
+  --exclude ETH \
+  --exclude SLV
+```
+
+To compare the default research scenarios and create a formatted Excel workbook:
+
+```bash
+uv run trading-signal compare \
+  --prices data/market/prices.csv \
+  --out reports/strategy_analysis.xlsx
 ```
 
 The default backtest starts on `2020-01-01` and uses a lookback buffer so moving
 averages are already warm when the simulated period starts.
+
+Downloaded mixed crypto/ETF data is aligned to a common close calendar. This
+keeps crypto weekend prices from creating simulated ETF trades on weekends or US
+market holidays.
+
+Trade CSV exports include realized PnL and return for each holding period. The
+comparison workbook also includes a full trade log where outcomes are
+color-coded by return (`<-10%`, `-10% to +10%`, `>+10%`) and conviction is
+color-coded from low to high.
 
 ## Development
 

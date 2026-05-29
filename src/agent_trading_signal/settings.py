@@ -39,6 +39,17 @@ class UniverseConfig(BaseModel):
     def symbols(self) -> list[str]:
         return [asset.symbol for asset in self.assets]
 
+    def active_assets(self, excluded_symbols: list[str] | None = None) -> list[AssetConfig]:
+        excluded = {symbol.strip().upper() for symbol in excluded_symbols or []}
+        unknown = excluded - set(self.symbols)
+        if unknown:
+            raise ValueError(f"Unknown excluded symbols: {', '.join(sorted(unknown))}")
+
+        assets = [asset for asset in self.assets if asset.symbol not in excluded]
+        if len(assets) < 2:
+            raise ValueError("At least two active assets are required")
+        return assets
+
 
 class SignalConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
@@ -51,6 +62,7 @@ class SignalConfig(BaseModel):
     slope_deadband: float = Field(default=0.0005, ge=0)
     tie_tolerance: int = Field(default=1, ge=0)
     max_leaders: int = Field(default=4, ge=1)
+    require_above_sma200_for_entries: bool = True
 
     @model_validator(mode="after")
     def validate_windows(self) -> SignalConfig:

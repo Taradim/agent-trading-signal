@@ -71,3 +71,20 @@ def test_equivalent_leaders_are_equal_weighted() -> None:
     result = evaluate_relative_strength(prices, ASSETS, CONFIG)
 
     assert result.allocation == {"A": 0.5, "B": 0.5}
+
+
+def test_sma200_entry_filter_prefers_cash_when_no_asset_is_above_sma200() -> None:
+    length = 260
+    recovering_below_sma200 = [200.0] * 200 + [100.0 + (50.0 * index / 59.0) for index in range(60)]
+    prices = price_frame(
+        {
+            "A": recovering_below_sma200,
+            "B": compound(120, -0.002, length),
+            "C": compound(110, -0.002, length),
+        }
+    )
+
+    result = evaluate_relative_strength(prices, ASSETS, CONFIG)
+
+    assert result.allocation == {"CASH": 1.0}
+    assert result.regime == "cash_filter"

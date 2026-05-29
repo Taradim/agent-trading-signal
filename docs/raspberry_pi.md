@@ -25,7 +25,11 @@ uv sync
 cd ~/agent-trading-signal
 uv run trading-signal download-prices --out data/market/prices.csv
 uv run trading-signal signal --prices data/market/prices.csv --out reports/latest-signal.md
-uv run trading-signal backtest --prices data/market/prices.csv --out reports/backtest.md
+uv run trading-signal backtest \
+  --prices data/market/prices.csv \
+  --out reports/backtest.md \
+  --equity-out reports/equity_curve.csv \
+  --trades-out reports/trades.csv
 ```
 
 ## Cron Example

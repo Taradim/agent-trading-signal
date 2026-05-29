@@ -7,6 +7,7 @@ ratio_deadband = 0.001
 slope_deadband = 0.0005
 tie_tolerance = 1
 max_leaders = 4
+require_above_sma200_for_entries = true
 
 [backtest]
 start = "2020-01-01"
