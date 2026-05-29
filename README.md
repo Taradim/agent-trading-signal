@@ -69,11 +69,6 @@ The portfolio uses equal-weight discrete allocations:
 
 No gradual weighting is used.
 
-The optional flip-flop stabilizer keeps that same discrete style. When the same
-two assets repeatedly alternate as 100% leaders and their scores remain close,
-the backtest can treat the period as an unstable range and target `50% / 50%`
-instead of forcing another full switch.
-
 ## Project Structure
 
 ```text

@@ -8,10 +8,6 @@ slope_deadband = 0.0005
 tie_tolerance = 1
 max_leaders = 4
 require_above_sma200_for_entries = true
-use_flip_flop_stabilizer = true
-flip_flop_lookback_signals = 5
-flip_flop_min_switches = 3
-flip_flop_tie_tolerance_boost = 1
 
 [backtest]
 start = "2020-01-01"

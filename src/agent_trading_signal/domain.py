@@ -13,7 +13,6 @@ Regime = Literal[
     "clear_trend",
     "transition",
     "range",
-    "stabilized_range",
 ]
 Conviction = Literal["high", "medium", "low"]
 

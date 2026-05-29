@@ -80,11 +80,9 @@ def _write_dashboard(
 
     note = (
         "Interpretation: the SMA200 entry filter improves both return and drawdown versus "
-        "the baseline. The flip-flop guard blends repeated two-asset alternations into 50/50 "
-        "ranges when scores remain close. Excluding ETH and SLV improves this sample further, "
-        "mostly by avoiding the largest ETH/SLV drawdown events. The Trades tab color-codes "
-        "realized outcomes and conviction. This is research output, not a finalized production "
-        "rule."
+        "the baseline. Excluding ETH and SLV improves this sample further, mostly by avoiding "
+        "the largest ETH/SLV drawdown events. The Trades tab color-codes realized outcomes and "
+        "conviction. This is research output, not a finalized production rule."
     )
     sheet.merge_cells("A9:M12")
     cell = sheet["A9"]
