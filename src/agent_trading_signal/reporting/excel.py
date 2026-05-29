@@ -14,6 +14,7 @@ from agent_trading_signal.backtest.scenarios import (
     drawdown_frame,
     monthly_equity_frame,
     scenario_summary_frame,
+    trade_analysis_frame,
     worst_trades_frame,
 )
 
@@ -24,6 +25,9 @@ DATE_FORMAT = "yyyy-mm-dd"
 TITLE_FILL = "17324D"
 HEADER_FILL = "D9EAF7"
 NOTE_FILL = "F4F7FA"
+GAIN_FILL = "D9EAD3"
+NEUTRAL_FILL = "FFF2CC"
+LOSS_FILL = "F4CCCC"
 
 
 def write_scenario_workbook(scenarios: list[ScenarioBacktest], path: str | Path) -> None:
@@ -33,12 +37,14 @@ def write_scenario_workbook(scenarios: list[ScenarioBacktest], path: str | Path)
     workbook = Workbook()
     dashboard = workbook.active
     dashboard.title = "Dashboard"
+    trades = workbook.create_sheet("Trades")
     worst = workbook.create_sheet("Worst Trades")
     assets = workbook.create_sheet("Asset PnL")
     curves = workbook.create_sheet("Equity Curves")
     drawdowns = workbook.create_sheet("Drawdowns")
 
     summary = scenario_summary_frame(scenarios)
+    trade_analysis = trade_analysis_frame(scenarios)
     worst_trades = worst_trades_frame(scenarios)
     asset_contribution = asset_contribution_frame(scenarios)
     equity = monthly_equity_frame(scenarios)
@@ -46,6 +52,7 @@ def write_scenario_workbook(scenarios: list[ScenarioBacktest], path: str | Path)
     drawdown = drawdown_frame(equity, scenario_names)
 
     _write_dashboard(dashboard, summary, equity, drawdown)
+    _write_table_sheet(trades, "All Trades with Realized PnL", trade_analysis, "Trades")
     _write_table_sheet(worst, "Worst Trades by Return", worst_trades, "WorstTrades")
     _write_table_sheet(assets, "Approximate Asset Contribution", asset_contribution, "AssetPnL")
     _write_table_sheet(curves, "Monthly Equity Curves", equity, "EquityCurves")
@@ -73,15 +80,19 @@ def _write_dashboard(
 
     note = (
         "Interpretation: the SMA200 entry filter improves both return and drawdown versus "
-        "the baseline. Excluding ETH and SLV improves this sample further, mostly by avoiding "
-        "the largest ETH/SLV drawdown events. This is research output, not a finalized "
-        "production rule."
+        "the baseline. The flip-flop guard blends repeated two-asset alternations into 50/50 "
+        "ranges when scores remain close. Excluding ETH and SLV improves this sample further, "
+        "mostly by avoiding the largest ETH/SLV drawdown events. The Trades tab color-codes "
+        "realized outcomes and conviction. This is research output, not a finalized production "
+        "rule."
     )
     sheet.merge_cells("A9:M12")
     cell = sheet["A9"]
     cell.value = note
     cell.fill = PatternFill("solid", fgColor=NOTE_FILL)
     cell.alignment = Alignment(wrap_text=True, vertical="top")
+    for row in range(9, 13):
+        sheet.row_dimensions[row].height = 23
 
     widths = {
         "A": 20,
@@ -114,6 +125,7 @@ def _write_table_sheet(sheet, title: str, frame: pd.DataFrame, table_name: str) 
     _write_frame(sheet, frame, start_row=3, start_col=1)
     _add_table(sheet, 3, 1, len(frame) + 1, len(frame.columns), table_name)
     _format_columns(sheet, frame, header_row=3)
+    _apply_trade_coloring(sheet, frame, header_row=3)
     sheet.freeze_panes = "A4"
     _autowidth(sheet, frame)
 
@@ -195,6 +207,46 @@ def _format_columns(sheet, frame: pd.DataFrame, header_row: int) -> None:
                 cell[0].number_format = number_format
 
 
+def _apply_trade_coloring(sheet, frame: pd.DataFrame, header_row: int) -> None:
+    if frame.empty or "Return" not in frame.columns:
+        return
+
+    columns = {column: index for index, column in enumerate(frame.columns, start=1)}
+    outcome_columns = [
+        columns[column] for column in ("PnL", "Return", "Outcome Band") if column in columns
+    ]
+    conviction_column = columns.get("Conviction")
+
+    for row in range(header_row + 1, header_row + len(frame) + 1):
+        return_value = sheet.cell(row, columns["Return"]).value
+        outcome_fill = _outcome_fill(return_value)
+        for column in outcome_columns:
+            sheet.cell(row, column).fill = outcome_fill
+
+        if conviction_column is None:
+            continue
+        conviction = str(sheet.cell(row, conviction_column).value).lower()
+        sheet.cell(row, conviction_column).fill = _conviction_fill(conviction)
+
+
+def _outcome_fill(return_value: object) -> PatternFill:
+    if not isinstance(return_value, int | float):
+        return PatternFill("solid", fgColor=NEUTRAL_FILL)
+    if return_value < -0.10:
+        return PatternFill("solid", fgColor=LOSS_FILL)
+    if return_value > 0.10:
+        return PatternFill("solid", fgColor=GAIN_FILL)
+    return PatternFill("solid", fgColor=NEUTRAL_FILL)
+
+
+def _conviction_fill(conviction: str) -> PatternFill:
+    if conviction in {"high", "strong"}:
+        return PatternFill("solid", fgColor=GAIN_FILL)
+    if conviction == "medium":
+        return PatternFill("solid", fgColor=NEUTRAL_FILL)
+    return PatternFill("solid", fgColor=LOSS_FILL)
+
+
 def _add_dashboard_charts(
     dashboard,
     curves,
@@ -252,7 +304,7 @@ def _set_widths(sheet, widths: dict[str, int]) -> None:
 
 def _verify_workbook(path: Path) -> None:
     workbook = load_workbook(path, read_only=False, data_only=False)
-    required = {"Dashboard", "Worst Trades", "Asset PnL", "Equity Curves", "Drawdowns"}
+    required = {"Dashboard", "Trades", "Worst Trades", "Asset PnL", "Equity Curves", "Drawdowns"}
     missing = required - set(workbook.sheetnames)
     if missing:
         raise ValueError(f"Missing workbook sheets: {', '.join(sorted(missing))}")

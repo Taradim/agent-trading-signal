@@ -116,7 +116,7 @@ def backtest(
         write_equity_curve(result, equity_out)
         typer.echo(f"Wrote equity curve to {equity_out}")
     if trades_out is not None:
-        write_trades(result.trades, trades_out)
+        write_trades(result, trades_out)
         typer.echo(f"Wrote trades to {trades_out}")
 
 

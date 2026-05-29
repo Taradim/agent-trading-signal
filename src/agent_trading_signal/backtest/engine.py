@@ -1,11 +1,19 @@
 from __future__ import annotations
 
+from dataclasses import replace
+from itertools import pairwise
 from math import sqrt
 
 import pandas as pd
 from pandas.tseries.offsets import BDay
 
-from agent_trading_signal.domain import BacktestMetrics, BacktestResult, SignalResult, Trade
+from agent_trading_signal.domain import (
+    AssetRank,
+    BacktestMetrics,
+    BacktestResult,
+    SignalResult,
+    Trade,
+)
 from agent_trading_signal.settings import AssetConfig, BacktestConfig, SignalConfig
 from agent_trading_signal.strategy.relative_strength import evaluate_relative_strength
 
@@ -26,6 +34,7 @@ def run_weekly_backtest(
         signal_config=signal_config,
         backtest_config=backtest_config,
     )
+    scheduled_trades = _apply_flip_flop_stabilizer(scheduled_trades, signal_config)
 
     start_index = full_prices.index.searchsorted(pd.Timestamp(backtest_config.start))
     simulation_dates = full_prices.index[start_index:]
@@ -134,6 +143,147 @@ def _build_scheduled_trades(
     return scheduled
 
 
+def _apply_flip_flop_stabilizer(
+    scheduled_trades: list[tuple[pd.Timestamp, SignalResult]],
+    signal_config: SignalConfig,
+) -> list[tuple[pd.Timestamp, SignalResult]]:
+    if not signal_config.use_flip_flop_stabilizer:
+        return scheduled_trades
+
+    stabilized: list[tuple[pd.Timestamp, SignalResult]] = []
+    recent_single_leaders: list[str] = []
+    active_pair: tuple[str, str] | None = None
+    for execution_date, signal in scheduled_trades:
+        if active_pair and _flip_flop_pair_can_stay_active(signal, active_pair, signal_config):
+            adjusted_signal = _blend_flip_flop_pair(
+                signal=signal,
+                symbols=active_pair,
+                warning=(
+                    "Flip-flop stabilizer keeps "
+                    f"{active_pair[0]}/{active_pair[1]} at 50/50 while scores remain close."
+                ),
+            )
+        else:
+            active_pair = None
+            adjusted_signal = _stabilize_flip_flop_signal(
+                signal, recent_single_leaders, signal_config
+            )
+            if adjusted_signal.regime == "stabilized_range":
+                active_pair = tuple(adjusted_signal.allocation)
+
+        stabilized.append((execution_date, adjusted_signal))
+
+        raw_single_leader = _single_asset_allocation(signal.allocation)
+        if raw_single_leader is not None:
+            recent_single_leaders.append(raw_single_leader)
+            recent_single_leaders = recent_single_leaders[
+                -(signal_config.flip_flop_lookback_signals - 1) :
+            ]
+
+    return stabilized
+
+
+def _stabilize_flip_flop_signal(
+    signal: SignalResult,
+    recent_single_leaders: list[str],
+    signal_config: SignalConfig,
+) -> SignalResult:
+    current_leader = _single_asset_allocation(signal.allocation)
+    if current_leader is None:
+        return signal
+
+    leader_window = (recent_single_leaders + [current_leader])[
+        -signal_config.flip_flop_lookback_signals :
+    ]
+    if len(set(leader_window)) != 2:
+        return signal
+
+    switch_count = sum(left != right for left, right in pairwise(leader_window))
+    if switch_count < signal_config.flip_flop_min_switches:
+        return signal
+
+    symbols = _ranked_pair(tuple(leader_window), signal.ranks)
+    if not _flip_flop_pair_is_eligible(symbols, signal.ranks, signal_config):
+        return signal
+
+    if _flip_flop_pair_score_gap(symbols, signal.ranks) > _flip_flop_maximum_gap(signal_config):
+        return signal
+
+    warning = (
+        "Flip-flop stabilizer blends "
+        f"{symbols[0]}/{symbols[1]} after {switch_count} switches "
+        f"in the last {len(leader_window)} signals."
+    )
+    return _blend_flip_flop_pair(signal, symbols, warning)
+
+
+def _flip_flop_pair_can_stay_active(
+    signal: SignalResult,
+    symbols: tuple[str, str],
+    signal_config: SignalConfig,
+) -> bool:
+    current_leader = _single_asset_allocation(signal.allocation)
+    if current_leader not in symbols:
+        return False
+    if not _flip_flop_pair_is_eligible(symbols, signal.ranks, signal_config):
+        return False
+    return _flip_flop_pair_score_gap(symbols, signal.ranks) <= _flip_flop_maximum_gap(signal_config)
+
+
+def _blend_flip_flop_pair(
+    signal: SignalResult,
+    symbols: tuple[str, str],
+    warning: str,
+) -> SignalResult:
+    ranked_symbols = _ranked_pair(symbols, signal.ranks)
+    return replace(
+        signal,
+        allocation={ranked_symbols[0]: 0.5, ranked_symbols[1]: 0.5},
+        regime="stabilized_range",
+        conviction="medium",
+        warnings=[*signal.warnings, warning],
+    )
+
+
+def _single_asset_allocation(allocation: dict[str, float]) -> str | None:
+    if len(allocation) != 1:
+        return None
+    symbol, weight = next(iter(allocation.items()))
+    if symbol == "CASH" or abs(weight - 1.0) > 1e-9:
+        return None
+    return symbol
+
+
+def _flip_flop_pair_is_eligible(
+    symbols: tuple[str, str],
+    ranks: list[AssetRank],
+    signal_config: SignalConfig,
+) -> bool:
+    rank_by_symbol = {rank.symbol: rank for rank in ranks}
+    for symbol in symbols:
+        rank = rank_by_symbol[symbol]
+        if signal_config.require_above_sma200_for_entries and not rank.trend.above_sma200:
+            return False
+        if not signal_config.require_above_sma200_for_entries and rank.trend.is_downtrend:
+            return False
+    return True
+
+
+def _ranked_pair(symbols: tuple[str, ...], ranks: list[AssetRank]) -> tuple[str, str]:
+    score_by_symbol = {rank.symbol: rank.net_score for rank in ranks}
+    ranked = sorted(set(symbols), key=lambda symbol: score_by_symbol[symbol], reverse=True)
+    return ranked[0], ranked[1]
+
+
+def _flip_flop_pair_score_gap(symbols: tuple[str, str], ranks: list[AssetRank]) -> int:
+    score_by_symbol = {rank.symbol: rank.net_score for rank in ranks}
+    return abs(score_by_symbol[symbols[0]] - score_by_symbol[symbols[1]])
+
+
+def _flip_flop_maximum_gap(signal_config: SignalConfig) -> int:
+    return signal_config.tie_tolerance + signal_config.flip_flop_tie_tolerance_boost
+
+
 def _execution_date(
     index: pd.DatetimeIndex,
     signal_date: pd.Timestamp,
@@ -173,6 +323,10 @@ def _should_execute_trade(
         return False
     if desired_allocation == {"CASH": 1.0}:
         return True
+    if signal.regime == "stabilized_range" and _allocations_overlap(
+        current_allocation, desired_allocation
+    ):
+        return True
     if last_rebalance_date is None or current_allocation == {"CASH": 1.0}:
         return True
     days_held = (execution_date.date() - last_rebalance_date.date()).days
@@ -184,6 +338,13 @@ def _should_execute_trade(
 def _allocations_equal(left: dict[str, float], right: dict[str, float]) -> bool:
     symbols = set(left) | set(right)
     return all(abs(left.get(symbol, 0.0) - right.get(symbol, 0.0)) < 1e-9 for symbol in symbols)
+
+
+def _allocations_overlap(left: dict[str, float], right: dict[str, float]) -> bool:
+    return any(
+        symbol != "CASH" and left.get(symbol, 0.0) > 0 and right.get(symbol, 0.0) > 0
+        for symbol in set(left) | set(right)
+    )
 
 
 def _one_way_turnover(left: dict[str, float], right: dict[str, float]) -> float:

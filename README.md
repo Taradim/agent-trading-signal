@@ -69,6 +69,11 @@ The portfolio uses equal-weight discrete allocations:
 
 No gradual weighting is used.
 
+The optional flip-flop stabilizer keeps that same discrete style. When the same
+two assets repeatedly alternate as 100% leaders and their scores remain close,
+the backtest can treat the period as an unstable range and target `50% / 50%`
+instead of forcing another full switch.
+
 ## Project Structure
 
 ```text
@@ -157,6 +162,11 @@ averages are already warm when the simulated period starts.
 Downloaded mixed crypto/ETF data is aligned to a common close calendar. This
 keeps crypto weekend prices from creating simulated ETF trades on weekends or US
 market holidays.
+
+Trade CSV exports include realized PnL and return for each holding period. The
+comparison workbook also includes a full trade log where outcomes are
+color-coded by return (`<-10%`, `-10% to +10%`, `>+10%`) and conviction is
+color-coded from low to high.
 
 ## Development
 

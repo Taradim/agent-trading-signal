@@ -18,6 +18,7 @@ class ScenarioDefinition:
     name: str
     require_above_sma200_for_entries: bool
     excluded_symbols: tuple[str, ...] = ()
+    use_flip_flop_stabilizer: bool | None = None
 
 
 @dataclass(frozen=True)
@@ -31,15 +32,29 @@ def default_scenarios() -> list[ScenarioDefinition]:
         ScenarioDefinition(
             name="Baseline",
             require_above_sma200_for_entries=False,
+            use_flip_flop_stabilizer=False,
         ),
         ScenarioDefinition(
             name="SMA200 filter",
             require_above_sma200_for_entries=True,
+            use_flip_flop_stabilizer=False,
+        ),
+        ScenarioDefinition(
+            name="SMA200 + flip-flop guard",
+            require_above_sma200_for_entries=True,
+            use_flip_flop_stabilizer=True,
         ),
         ScenarioDefinition(
             name="SMA200 ex ETH/SLV",
             require_above_sma200_for_entries=True,
             excluded_symbols=("ETH", "SLV"),
+            use_flip_flop_stabilizer=False,
+        ),
+        ScenarioDefinition(
+            name="SMA200 guard ex ETH/SLV",
+            require_above_sma200_for_entries=True,
+            excluded_symbols=("ETH", "SLV"),
+            use_flip_flop_stabilizer=True,
         ),
     ]
 
@@ -55,9 +70,10 @@ def run_scenarios(
     results: list[ScenarioBacktest] = []
     for scenario in scenarios:
         assets = universe.active_assets(list(scenario.excluded_symbols))
-        scenario_signal_config = signal_config.model_copy(
-            update={"require_above_sma200_for_entries": scenario.require_above_sma200_for_entries}
-        )
+        updates = {"require_above_sma200_for_entries": scenario.require_above_sma200_for_entries}
+        if scenario.use_flip_flop_stabilizer is not None:
+            updates["use_flip_flop_stabilizer"] = scenario.use_flip_flop_stabilizer
+        scenario_signal_config = signal_config.model_copy(update=updates)
         result = run_weekly_backtest(
             prices=prices,
             assets=assets,
@@ -186,6 +202,7 @@ def _trade_analysis_rows(scenario_name: str, result: BacktestResult) -> list[dic
             exit_reason = "end_of_data"
 
         pnl = exit_capital_before_next_cost - entry_capital
+        realized_return = pnl / entry_capital if entry_capital else 0.0
         rows.append(
             {
                 "Scenario": scenario_name,
@@ -199,7 +216,8 @@ def _trade_analysis_rows(scenario_name: str, result: BacktestResult) -> list[dic
                 "Entry Capital": entry_capital,
                 "Exit Capital Before Next Cost": exit_capital_before_next_cost,
                 "PnL": pnl,
-                "Return": pnl / entry_capital if entry_capital else 0.0,
+                "Return": realized_return,
+                "Outcome Band": _outcome_band(realized_return),
                 "Entry Cost": trade.cost,
                 "Regime": trade.regime,
                 "Conviction": trade.conviction,
@@ -217,3 +235,11 @@ def _primary_asset(trade: Trade) -> str:
     if not trade.allocation:
         return ""
     return max(trade.allocation, key=trade.allocation.get)
+
+
+def _outcome_band(realized_return: float) -> str:
+    if realized_return < -0.10:
+        return "Loss below -10%"
+    if realized_return > 0.10:
+        return "Gain above +10%"
+    return "Between -10% and +10%"

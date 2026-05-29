@@ -52,6 +52,21 @@ triggered, the target allocation becomes cash by entry filter.
 Many neutral pairs imply range or transition behavior. The report should lower
 conviction in that case, even if it still proposes a target allocation.
 
+## Flip-Flop Stabilizer
+
+Some ranges alternate between two single-asset leaders for several weeks. The
+strategy can stabilize those periods by widening the tie treatment only for the
+same repeated pair:
+
+- the recent signal window must contain exactly two single-asset leaders;
+- the leaders must switch at least the configured number of times;
+- both assets must still pass the entry filter;
+- their relative-strength scores must remain within the normal tie tolerance
+  plus the configured flip-flop tolerance boost.
+
+When those conditions are met, the target allocation becomes `50% / 50%` for the
+two assets and the regime is marked as `stabilized_range`.
+
 ## Holding Period
 
 The backtest uses a preferred minimum holding period of 28 days. It can still
@@ -59,6 +74,7 @@ rotate earlier when:
 
 - the target becomes cash;
 - the current allocation is cash;
+- a flip-flop stabilized range overlaps the current allocation;
 - the new signal has high conviction.
 
 This is intentionally simple. It reflects the desired behavior: avoid noisy

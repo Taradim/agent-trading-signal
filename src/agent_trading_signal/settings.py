@@ -63,11 +63,17 @@ class SignalConfig(BaseModel):
     tie_tolerance: int = Field(default=1, ge=0)
     max_leaders: int = Field(default=4, ge=1)
     require_above_sma200_for_entries: bool = True
+    use_flip_flop_stabilizer: bool = True
+    flip_flop_lookback_signals: int = Field(default=5, ge=2)
+    flip_flop_min_switches: int = Field(default=3, ge=1)
+    flip_flop_tie_tolerance_boost: int = Field(default=1, ge=0)
 
     @model_validator(mode="after")
     def validate_windows(self) -> SignalConfig:
         if self.sma_fast_window >= self.sma_slow_window:
             raise ValueError("sma_fast_window must be lower than sma_slow_window")
+        if self.flip_flop_min_switches >= self.flip_flop_lookback_signals:
+            raise ValueError("flip_flop_min_switches must be lower than flip_flop_lookback_signals")
         return self
 
     @property

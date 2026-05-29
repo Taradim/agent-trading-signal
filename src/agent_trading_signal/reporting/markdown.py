@@ -8,6 +8,7 @@ REGIME_LABELS = {
     "clear_trend": "clear trend",
     "transition": "transition",
     "range": "range / unclear leadership",
+    "stabilized_range": "stabilized range",
 }
 
 
@@ -139,6 +140,11 @@ def _quick_read(result: SignalResult) -> str:
         return (
             f"Leadership is unclear. The model proposes {leaders}, "
             "but conviction is low and false-signal risk is elevated."
+        )
+    if result.regime == "stabilized_range":
+        return (
+            f"Recent leadership has been alternating. The model proposes a {leaders} split "
+            "instead of forcing another 100% switch."
         )
     return (
         f"The signal points to {leaders} in a transition regime. "

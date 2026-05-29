@@ -65,9 +65,11 @@ def test_write_scenario_workbook(tmp_path) -> None:
     workbook = load_workbook(output)
     assert workbook.sheetnames == [
         "Dashboard",
+        "Trades",
         "Worst Trades",
         "Asset PnL",
         "Equity Curves",
         "Drawdowns",
     ]
     assert len(workbook["Dashboard"]._charts) == 2
+    assert "Outcome Band" in [cell.value for cell in workbook["Trades"][3]]

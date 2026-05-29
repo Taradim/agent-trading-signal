@@ -12,6 +12,8 @@ def test_load_default_strategy_config() -> None:
 
     assert config.signal.ema_window == 35
     assert config.signal.require_above_sma200_for_entries is True
+    assert config.signal.use_flip_flop_stabilizer is True
+    assert config.signal.flip_flop_min_switches == 3
     assert config.backtest.start.isoformat() == "2020-01-01"
 
 
