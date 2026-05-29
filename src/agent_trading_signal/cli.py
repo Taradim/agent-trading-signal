@@ -8,6 +8,7 @@ import pandas as pd
 import typer
 
 from agent_trading_signal.backtest.engine import run_weekly_backtest
+from agent_trading_signal.backtest.export import write_equity_curve, write_trades
 from agent_trading_signal.data.csv_prices import load_price_csv, save_price_csv
 from agent_trading_signal.data.yfinance_provider import download_adjusted_closes
 from agent_trading_signal.reporting.markdown import render_backtest_report, render_signal_report
@@ -67,6 +68,14 @@ def backtest(
         Path | None,
         typer.Option(help="Markdown output path."),
     ] = DEFAULT_BACKTEST_REPORT_PATH,
+    equity_out: Annotated[
+        Path | None,
+        typer.Option(help="Optional CSV output path for the strategy and benchmark curves."),
+    ] = None,
+    trades_out: Annotated[
+        Path | None,
+        typer.Option(help="Optional CSV output path for executed trades."),
+    ] = None,
     download: Annotated[
         bool,
         typer.Option(help="Download prices from yfinance instead of reading CSV."),
@@ -90,6 +99,12 @@ def backtest(
         backtest_config=config.backtest,
     )
     _write_or_print(render_backtest_report(result), out)
+    if equity_out is not None:
+        write_equity_curve(result, equity_out)
+        typer.echo(f"Wrote equity curve to {equity_out}")
+    if trades_out is not None:
+        write_trades(result.trades, trades_out)
+        typer.echo(f"Wrote trades to {trades_out}")
 
 
 @app.command()

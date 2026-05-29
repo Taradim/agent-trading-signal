@@ -28,12 +28,21 @@ def save_price_csv(prices: pd.DataFrame, path: str | Path) -> None:
     prices.reset_index(names="Date").to_csv(output_path, index=False)
 
 
-def clean_price_frame(prices: pd.DataFrame) -> pd.DataFrame:
+def clean_price_frame(prices: pd.DataFrame, forward_fill: bool = False) -> pd.DataFrame:
+    """Normalize prices and align them to rows where all assets have valid closes.
+
+    By default, missing rows are dropped instead of forward-filled. This matters for
+    mixed crypto/ETF universes: crypto trades 7 days a week, while ETFs do not. A
+    common close calendar keeps the backtest from executing ETF trades on weekends
+    or market holidays using stale prices.
+    """
     if prices.empty:
         raise ValueError("Price frame cannot be empty")
     prices = prices.sort_index()
     prices = prices[~prices.index.duplicated(keep="last")]
-    prices = prices.ffill().dropna(how="any")
+    if forward_fill:
+        prices = prices.ffill()
+    prices = prices.dropna(how="any")
     if (prices <= 0).any().any():
         raise ValueError("Prices must be strictly positive")
     return prices

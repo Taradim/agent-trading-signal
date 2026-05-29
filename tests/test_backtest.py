@@ -3,6 +3,7 @@ from datetime import date
 import pandas as pd
 
 from agent_trading_signal.backtest.engine import run_weekly_backtest
+from agent_trading_signal.backtest.export import equity_curve_frame, trades_frame
 from agent_trading_signal.settings import AssetConfig, BacktestConfig, SignalConfig
 
 ASSETS = [
@@ -34,3 +35,5 @@ def test_backtest_produces_equity_curve_and_trades() -> None:
     assert not result.equity_curve.empty
     assert result.metrics.trade_count >= 1
     assert "A" in result.benchmark_curves
+    assert list(equity_curve_frame(result).columns) == ["Date", "strategy", "A"]
+    assert "allocation" in trades_frame(result.trades).columns

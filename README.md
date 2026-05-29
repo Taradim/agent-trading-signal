@@ -125,11 +125,17 @@ uv run trading-signal signal --download --out reports/latest-signal.md
 ```bash
 uv run trading-signal backtest \
   --prices data/market/prices.csv \
-  --out reports/backtest.md
+  --out reports/backtest.md \
+  --equity-out reports/equity_curve.csv \
+  --trades-out reports/trades.csv
 ```
 
 The default backtest starts on `2020-01-01` and uses a lookback buffer so moving
 averages are already warm when the simulated period starts.
+
+Downloaded mixed crypto/ETF data is aligned to a common close calendar. This
+keeps crypto weekend prices from creating simulated ETF trades on weekends or US
+market holidays.
 
 ## Development
 

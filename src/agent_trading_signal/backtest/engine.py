@@ -16,7 +16,7 @@ def run_weekly_backtest(
     signal_config: SignalConfig,
     backtest_config: BacktestConfig,
 ) -> BacktestResult:
-    full_prices = _require_history(prices.sort_index().ffill().dropna(how="any"), signal_config)
+    full_prices = _require_history(prices.sort_index().dropna(how="any"), signal_config)
     returns = full_prices.pct_change().fillna(0.0)
     decision_dates = _decision_dates(full_prices, backtest_config.decision_frequency)
     scheduled_trades = _build_scheduled_trades(

@@ -66,6 +66,10 @@ The default simulation uses:
 The live process should run before the US market open on Monday so any manual
 execution can happen around the US session open.
 
+For mixed crypto/ETF data, the research dataset is aligned to a common close
+calendar. Crypto weekend closes are not used to create synthetic ETF execution
+dates.
+
 ## Open Questions
 
 - What should be the first production-grade data provider after `yfinance`?
