@@ -16,6 +16,18 @@ def test_load_default_strategy_config() -> None:
     assert config.backtest.start.isoformat() == "2020-01-01"
 
 
+def test_load_global_research_configs() -> None:
+    global_universe = load_universe("config/universe_global_usd.toml")
+    etf_universe = load_universe("config/universe_global_etf_2010.toml")
+    core_universe = load_universe("config/universe_core_etf_2010.toml")
+    config = load_strategy_config("config/strategy_2010.toml")
+
+    assert "ETH" in global_universe.symbols
+    assert "ETH" not in etf_universe.symbols
+    assert core_universe.symbols == ["GLD", "SLV", "SMH", "QQQ", "SPY"]
+    assert config.backtest.start.isoformat() == "2010-01-01"
+
+
 def test_active_assets_can_exclude_symbols() -> None:
     universe = load_universe("config/universe.toml")
 

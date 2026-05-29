@@ -28,6 +28,19 @@ The initial universe is defined in [`config/universe.toml`](config/universe.toml
 All research tickers are USD-based to keep the relative-strength matrix clean.
 Execution tickers can later be mapped to Interactive Brokers instruments.
 
+Additional research universes are provided for longer-window and global tests:
+
+- [`config/universe_core_etf_2010.toml`](config/universe_core_etf_2010.toml):
+  GLD, SLV, SMH, QQQ, and SPY;
+- [`config/universe_global_etf_2010.toml`](config/universe_global_etf_2010.toml):
+  the core ETF set plus USD-listed France, Germany, UK, Japan, Hong Kong, and
+  South Korea ETFs;
+- [`config/universe_global_usd.toml`](config/universe_global_usd.toml):
+  the global ETF set plus BTC and ETH.
+
+The 2010 ETF universes intentionally exclude BTC and ETH because reliable Yahoo
+daily history for those assets does not reach back to 2010.
+
 ### Absolute Trend Filter
 
 Each asset is compared against:
@@ -162,6 +175,23 @@ uv run trading-signal compare \
   --prices data/market/prices.csv \
   --research \
   --out reports/research_scenarios.xlsx
+```
+
+To run a longer ETF-only sweep from 2010:
+
+```bash
+uv run trading-signal download-prices \
+  --universe config/universe_core_etf_2010.toml \
+  --strategy-config config/strategy_2010.toml \
+  --start 2008-01-01 \
+  --out data/market/core_etf_2010_prices.csv
+
+uv run trading-signal compare \
+  --universe config/universe_core_etf_2010.toml \
+  --strategy-config config/strategy_2010.toml \
+  --prices data/market/core_etf_2010_prices.csv \
+  --research \
+  --out reports/research_core_etf_2010.xlsx
 ```
 
 The default backtest starts on `2020-01-01` and uses a lookback buffer so moving

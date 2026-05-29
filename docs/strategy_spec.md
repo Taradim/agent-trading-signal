@@ -51,6 +51,19 @@ The default production setting requires one positive absolute trend point, which
 matches the SMA 200 filter. Research scenarios can raise this threshold to two
 or three positive trend points to test stricter absolute-trend confirmation.
 
+## Research Universes
+
+The default live-research universe includes crypto, metals, semiconductors, and
+US equity indexes. Additional research universes are available for longer-window
+tests:
+
+- `universe_core_etf_2010.toml` removes crypto so the backtest can start in
+  2010;
+- `universe_global_etf_2010.toml` adds USD-listed country ETF proxies for
+  France, Germany, UK, Japan, Hong Kong, and South Korea;
+- `universe_global_usd.toml` combines the global ETF set with BTC and ETH, but
+  naturally starts later because ETH history begins later.
+
 ## Range Handling
 
 Many neutral pairs imply range or transition behavior. The report should lower

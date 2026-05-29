@@ -149,6 +149,8 @@ def run_scenarios(
     scenarios = scenario_definitions or default_scenarios()
     results: list[ScenarioBacktest] = []
     for scenario in scenarios:
+        if not _scenario_applies_to_universe(scenario, universe):
+            continue
         assets = universe.active_assets(list(scenario.excluded_symbols))
         signal_updates = {
             "require_above_sma200_for_entries": scenario.require_above_sma200_for_entries,
@@ -164,6 +166,13 @@ def run_scenarios(
         )
         results.append(ScenarioBacktest(definition=scenario, result=result))
     return results
+
+
+def _scenario_applies_to_universe(
+    scenario: ScenarioDefinition,
+    universe: UniverseConfig,
+) -> bool:
+    return set(scenario.excluded_symbols).issubset(universe.symbols)
 
 
 def scenario_summary_frame(scenarios: list[ScenarioBacktest]) -> pd.DataFrame:
