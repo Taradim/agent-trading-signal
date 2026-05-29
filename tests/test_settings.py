@@ -20,12 +20,19 @@ def test_load_global_research_configs() -> None:
     global_universe = load_universe("config/universe_global_usd.toml")
     etf_universe = load_universe("config/universe_global_etf_2010.toml")
     core_universe = load_universe("config/universe_core_etf_2010.toml")
+    recommended_universe = load_universe("config/universe_recommended.toml")
     config = load_strategy_config("config/strategy_2010.toml")
+    recommended_config = load_strategy_config("config/strategy_recommended.toml")
 
     assert "ETH" in global_universe.symbols
     assert "ETH" not in etf_universe.symbols
     assert core_universe.symbols == ["GLD", "SLV", "SMH", "QQQ", "SPY"]
+    assert recommended_universe.symbols == ["BTC", "GLD", "SLV", "SMH", "QQQ", "SPY"]
     assert config.backtest.start.isoformat() == "2010-01-01"
+    assert recommended_config.backtest.start.isoformat() == "2016-01-01"
+    assert recommended_config.backtest.decision_frequency == "2W-FRI"
+    assert recommended_config.signal.entry_min_bullish_points == 3
+    assert recommended_config.signal.tie_tolerance == 0
 
 
 def test_active_assets_can_exclude_symbols() -> None:

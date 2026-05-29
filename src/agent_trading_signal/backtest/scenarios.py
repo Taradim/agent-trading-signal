@@ -34,6 +34,7 @@ def default_scenarios() -> list[ScenarioDefinition]:
         ScenarioDefinition(
             name="Baseline",
             require_above_sma200_for_entries=False,
+            signal_updates={"entry_min_bullish_points": 1},
         ),
         ScenarioDefinition(
             name="SMA200 filter",

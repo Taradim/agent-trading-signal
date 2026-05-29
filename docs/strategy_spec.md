@@ -53,9 +53,17 @@ or three positive trend points to test stricter absolute-trend confirmation.
 
 ## Research Universes
 
-The default live-research universe includes crypto, metals, semiconductors, and
-US equity indexes. Additional research universes are available for longer-window
-tests:
+The recommended live-research universe is `universe_recommended.toml`: BTC,
+GLD, SLV, SMH, QQQ, and SPY. It intentionally excludes ETH and global country
+ETFs because the current research sweep shows better performance and cleaner
+drawdown behavior with the core ETF set plus Bitcoin.
+
+The recommended research configuration requires the leader to be above EMA35,
+SMA100, and SMA200, uses a strict leader threshold, and uses a biweekly decision
+frequency. Live monitoring can still run weekly, but this configuration records
+the current best backtested execution cadence for the recommended universe.
+
+Additional research universes are available for longer-window tests:
 
 - `universe_core_etf_2010.toml` removes crypto so the backtest can start in
   2010;

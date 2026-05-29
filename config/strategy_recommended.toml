@@ -1,0 +1,22 @@
+[signal]
+ema_window = 35
+sma_fast_window = 100
+sma_slow_window = 200
+slope_lookback = 10
+ratio_deadband = 0.001
+slope_deadband = 0.0005
+tie_tolerance = 0
+max_leaders = 4
+require_above_sma200_for_entries = true
+entry_min_bullish_points = 3
+
+[backtest]
+start = "2016-01-01"
+initial_capital = 10000.0
+decision_frequency = "2W-FRI"
+execution_lag_business_days = 1
+transaction_cost_bps = 5.0
+slippage_bps = 5.0
+min_holding_days = 28
+lookback_buffer_days = 500
+benchmarks = ["BTC", "SMH", "QQQ", "SPY", "GLD"]
