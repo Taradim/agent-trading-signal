@@ -23,6 +23,24 @@ uv sync
 
 ```bash
 cd ~/agent-trading-signal
+uv run trading-signal weekly-report
+```
+
+The weekly report uses the recommended core ETF + BTC configuration, downloads
+fresh prices, writes `data/market/recommended_prices.csv`, and creates
+`reports/weekly_decision.md`.
+
+Update `config/current_portfolio.toml` after each manual rebalance so the next
+run can show whether a trade is still needed:
+
+```toml
+[allocation]
+SMH = 1.0
+```
+
+For deeper research or exports, run the lower-level commands directly:
+
+```bash
 uv run trading-signal download-prices --out data/market/prices.csv
 uv run trading-signal signal --prices data/market/prices.csv --out reports/latest-signal.md
 uv run trading-signal backtest \
@@ -43,7 +61,7 @@ crontab -e
 Run every Monday at 09:00 Paris time:
 
 ```cron
-0 9 * * 1 cd /home/pi/agent-trading-signal && uv run trading-signal signal --download --out reports/latest-signal.md
+0 9 * * 1 cd /home/pi/agent-trading-signal && uv run trading-signal weekly-report
 ```
 
 ## Operational Notes
