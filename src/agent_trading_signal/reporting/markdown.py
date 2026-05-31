@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+from datetime import datetime
+
 from agent_trading_signal.domain import BacktestResult, SignalResult
+from agent_trading_signal.portfolio import allocation_deltas, needs_rebalance
 
 REGIME_LABELS = {
     "cash_defense": "cash defense",
@@ -9,6 +12,95 @@ REGIME_LABELS = {
     "transition": "transition",
     "range": "range / unclear leadership",
 }
+
+
+def render_weekly_decision_report(
+    result: SignalResult,
+    current_allocation: dict[str, float],
+    generated_at: datetime,
+    data_source: str,
+    min_trade_threshold: float = 0.005,
+) -> str:
+    deltas = allocation_deltas(
+        current_allocation=current_allocation,
+        target_allocation=result.allocation,
+        min_trade_threshold=min_trade_threshold,
+    )
+    rebalance_required = needs_rebalance(deltas)
+    data_age_days = (generated_at.date() - result.as_of).days
+
+    lines: list[str] = []
+    lines.append(f"# Weekly Decision Report - {result.as_of.isoformat()}")
+    lines.append("")
+    lines.append(f"**Generated:** {generated_at.isoformat(timespec='seconds')}")
+    lines.append(f"**Price data as of:** {result.as_of.isoformat()}")
+    lines.append(f"**Data source:** {data_source}")
+    lines.append(f"**Data age:** {data_age_days} calendar days")
+    lines.append(
+        f"**Decision:** {'rebalance required' if rebalance_required else 'no trade needed'}"
+    )
+    lines.append(f"**Regime:** {REGIME_LABELS[result.regime]}")
+    lines.append(f"**Conviction:** {result.conviction}")
+    lines.append(f"**Current allocation:** {_format_allocation(current_allocation)}")
+    lines.append(f"**Target allocation:** {_format_allocation(result.allocation)}")
+    lines.append("")
+
+    if data_age_days > 4:
+        lines.append(
+            "> Price data is older than four calendar days. Refresh prices before trading."
+        )
+        lines.append("")
+
+    lines.append("## Trade Plan")
+    lines.append("")
+    lines.append("| Asset | Current | Target | Change | Action |")
+    lines.append("| --- | ---: | ---: | ---: | --- |")
+    for delta in deltas:
+        lines.append(
+            "| "
+            f"{delta.symbol} | {delta.current_weight:.2%} | {delta.target_weight:.2%} | "
+            f"{delta.delta:+.2%} | {delta.action} |"
+        )
+    lines.append("")
+
+    lines.append("## Model Read")
+    lines.append("")
+    lines.append(_quick_read(result))
+    lines.append("")
+
+    if result.warnings:
+        lines.append("## Watchpoints")
+        lines.append("")
+        for warning in result.warnings:
+            lines.append(f"- {warning}")
+        lines.append("")
+
+    lines.append("## Relative Strength Ranking")
+    lines.append("")
+    lines.append("| Rank | Asset | Net | Wins | Losses | Neutral | Absolute trend | Price |")
+    lines.append("| ---: | --- | ---: | ---: | ---: | ---: | --- | ---: |")
+    for index, rank in enumerate(result.ranks, start=1):
+        lines.append(
+            "| "
+            f"{index} | {rank.symbol} | {rank.net_score} | {rank.wins} | "
+            f"{rank.losses} | {rank.neutral} | {rank.trend.label} | "
+            f"{rank.trend.price:.2f} |"
+        )
+    lines.append("")
+
+    lines.append("## Absolute Trend")
+    lines.append("")
+    lines.append("| Asset | Price | EMA35 | SMA100 | SMA200 | State |")
+    lines.append("| --- | ---: | ---: | ---: | ---: | --- |")
+    for symbol, trend in result.trends.items():
+        lines.append(
+            "| "
+            f"{symbol} | {trend.price:.2f} | {trend.ema35:.2f} | "
+            f"{trend.sma100:.2f} | {trend.sma200:.2f} | {trend.label} |"
+        )
+    lines.append("")
+
+    return "\n".join(lines)
 
 
 def render_signal_report(result: SignalResult) -> str:

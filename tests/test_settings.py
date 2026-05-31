@@ -1,4 +1,8 @@
-from agent_trading_signal.settings import load_strategy_config, load_universe
+from pathlib import Path
+
+import pytest
+
+from agent_trading_signal.settings import load_portfolio, load_strategy_config, load_universe
 
 
 def test_load_default_universe() -> None:
@@ -41,3 +45,17 @@ def test_active_assets_can_exclude_symbols() -> None:
     assets = universe.active_assets(["ETH", "SLV"])
 
     assert [asset.symbol for asset in assets] == ["BTC", "GLD", "SMH", "QQQ", "SPY"]
+
+
+def test_load_current_portfolio() -> None:
+    portfolio = load_portfolio("config/current_portfolio.toml")
+
+    assert portfolio.allocation == {"CASH": 1.0}
+
+
+def test_portfolio_requires_full_allocation(tmp_path: Path) -> None:
+    path = tmp_path / "portfolio.toml"
+    path.write_text("[allocation]\nBTC = 0.7\nSMH = 0.2\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="must sum to 1.0"):
+        load_portfolio(path)

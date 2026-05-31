@@ -97,12 +97,44 @@ class StrategyConfig(BaseModel):
     backtest: BacktestConfig = Field(default_factory=BacktestConfig)
 
 
+class PortfolioConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    allocation: dict[str, float] = Field(min_length=1)
+
+    @field_validator("allocation")
+    @classmethod
+    def normalize_allocation(cls, allocation: dict[str, float]) -> dict[str, float]:
+        normalized: dict[str, float] = {}
+        for symbol, weight in allocation.items():
+            normalized_symbol = symbol.strip().upper()
+            if not normalized_symbol:
+                raise ValueError("Portfolio allocation symbols cannot be empty")
+            if normalized_symbol in normalized:
+                raise ValueError(f"Duplicate portfolio allocation symbol: {normalized_symbol}")
+            if weight < 0 or weight > 1:
+                raise ValueError("Portfolio allocation weights must be between 0 and 1")
+            normalized[normalized_symbol] = weight
+        return normalized
+
+    @model_validator(mode="after")
+    def validate_allocation_sum(self) -> PortfolioConfig:
+        total = sum(self.allocation.values())
+        if abs(total - 1.0) > 0.000001:
+            raise ValueError(f"Portfolio allocation must sum to 1.0; got {total:.6f}")
+        return self
+
+
 def load_universe(path: str | Path) -> UniverseConfig:
     return UniverseConfig.model_validate(_load_toml(path))
 
 
 def load_strategy_config(path: str | Path) -> StrategyConfig:
     return StrategyConfig.model_validate(_load_toml(path))
+
+
+def load_portfolio(path: str | Path) -> PortfolioConfig:
+    return PortfolioConfig.model_validate(_load_toml(path))
 
 
 def _load_toml(path: str | Path) -> dict:

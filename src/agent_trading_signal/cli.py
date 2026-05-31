@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Annotated
 
@@ -12,9 +12,19 @@ from agent_trading_signal.backtest.export import write_equity_curve, write_trade
 from agent_trading_signal.backtest.scenarios import research_scenarios, run_scenarios
 from agent_trading_signal.data.csv_prices import load_price_csv, save_price_csv
 from agent_trading_signal.data.yfinance_provider import download_adjusted_closes
+from agent_trading_signal.portfolio import validate_portfolio_symbols
 from agent_trading_signal.reporting.excel import write_scenario_workbook
-from agent_trading_signal.reporting.markdown import render_backtest_report, render_signal_report
-from agent_trading_signal.settings import AssetConfig, load_strategy_config, load_universe
+from agent_trading_signal.reporting.markdown import (
+    render_backtest_report,
+    render_signal_report,
+    render_weekly_decision_report,
+)
+from agent_trading_signal.settings import (
+    AssetConfig,
+    load_portfolio,
+    load_strategy_config,
+    load_universe,
+)
 from agent_trading_signal.strategy.relative_strength import evaluate_relative_strength
 
 app = typer.Typer(help="Relative-strength trading signal toolkit.")
@@ -23,6 +33,11 @@ DEFAULT_STRATEGY_PATH = Path("config/strategy.toml")
 DEFAULT_PRICE_PATH = Path("data/market/prices.csv")
 DEFAULT_BACKTEST_REPORT_PATH = Path("reports/backtest.md")
 DEFAULT_ANALYSIS_WORKBOOK_PATH = Path("reports/strategy_analysis.xlsx")
+DEFAULT_RECOMMENDED_UNIVERSE_PATH = Path("config/universe_recommended.toml")
+DEFAULT_RECOMMENDED_STRATEGY_PATH = Path("config/strategy_recommended.toml")
+DEFAULT_RECOMMENDED_PRICE_PATH = Path("data/market/recommended_prices.csv")
+DEFAULT_PORTFOLIO_PATH = Path("config/current_portfolio.toml")
+DEFAULT_WEEKLY_REPORT_PATH = Path("reports/weekly_decision.md")
 
 
 @app.command()
@@ -195,6 +210,76 @@ def compare(
     )
     write_scenario_workbook(scenarios, out)
     typer.echo(f"Wrote scenario workbook to {out}")
+
+
+@app.command()
+def weekly_report(
+    prices: Annotated[
+        Path | None,
+        typer.Option(help="CSV file to read when --no-download is used."),
+    ] = DEFAULT_RECOMMENDED_PRICE_PATH,
+    universe: Annotated[
+        Path,
+        typer.Option(help="Universe TOML file."),
+    ] = DEFAULT_RECOMMENDED_UNIVERSE_PATH,
+    strategy_config: Annotated[
+        Path,
+        typer.Option(help="Strategy TOML file."),
+    ] = DEFAULT_RECOMMENDED_STRATEGY_PATH,
+    portfolio: Annotated[
+        Path,
+        typer.Option(help="Current portfolio TOML file."),
+    ] = DEFAULT_PORTFOLIO_PATH,
+    out: Annotated[
+        Path | None,
+        typer.Option(help="Markdown output path."),
+    ] = DEFAULT_WEEKLY_REPORT_PATH,
+    download: Annotated[
+        bool,
+        typer.Option(help="Download fresh prices before generating the report."),
+    ] = True,
+    prices_out: Annotated[
+        Path | None,
+        typer.Option(help="Optional CSV path where downloaded prices are saved."),
+    ] = DEFAULT_RECOMMENDED_PRICE_PATH,
+    exclude: Annotated[
+        list[str] | None,
+        typer.Option("--exclude", help="Asset symbol to exclude from this run."),
+    ] = None,
+    min_trade_threshold: Annotated[
+        float,
+        typer.Option(help="Minimum allocation change shown as a trade."),
+    ] = 0.005,
+) -> None:
+    """Generate the recommended weekly decision report."""
+    universe_config = load_universe(universe)
+    config = load_strategy_config(strategy_config)
+    portfolio_config = load_portfolio(portfolio)
+    validate_portfolio_symbols(portfolio_config.allocation, universe_config.symbols)
+
+    assets = universe_config.active_assets(exclude)
+    start = _default_signal_start(config.signal.sma_slow_window)
+    price_frame = _load_prices(
+        prices=prices,
+        download=download,
+        assets=assets,
+        start=start,
+        end=None,
+    )
+    if download and prices_out is not None:
+        save_price_csv(price_frame, prices_out)
+        typer.echo(f"Saved {len(price_frame)} rows to {prices_out}")
+
+    result = evaluate_relative_strength(price_frame, assets, config.signal)
+    data_source = "yfinance download" if download else str(prices)
+    report = render_weekly_decision_report(
+        result=result,
+        current_allocation=portfolio_config.allocation,
+        generated_at=datetime.now().astimezone(),
+        data_source=data_source,
+        min_trade_threshold=min_trade_threshold,
+    )
+    _write_or_print(report, out)
 
 
 def _load_prices(

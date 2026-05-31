@@ -1,0 +1,5 @@
+# Update this file after manual execution so weekly reports can compare the
+# model target with the current live allocation.
+
+[allocation]
+CASH = 1.0

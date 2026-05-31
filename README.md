@@ -217,6 +217,25 @@ uv run trading-signal compare \
   --out reports/research_recommended_core_btc.xlsx
 ```
 
+To generate the live weekly decision report with the recommended configuration:
+
+```bash
+uv run trading-signal weekly-report
+```
+
+This command downloads fresh recommended-universe prices, saves them to
+`data/market/recommended_prices.csv`, reads the current allocation from
+[`config/current_portfolio.toml`](config/current_portfolio.toml), and writes
+`reports/weekly_decision.md`.
+
+Update `config/current_portfolio.toml` after manual execution so the next report
+can compare the model target with the actual live allocation:
+
+```toml
+[allocation]
+SMH = 1.0
+```
+
 To run a longer ETF-only sweep from 2010:
 
 ```bash
