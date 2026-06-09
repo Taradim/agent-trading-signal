@@ -1,0 +1,10 @@
+[Unit]
+Description=Agent Trading Signal weekly decision report
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/agent-trading-signal
+Environment=AGENT_TRADING_SIGNAL_REPO_DIR=%h/agent-trading-signal
+ExecStart=%h/agent-trading-signal/scripts/run_weekly_report.sh

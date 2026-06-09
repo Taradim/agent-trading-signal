@@ -14,6 +14,7 @@ from agent_trading_signal.data.csv_prices import load_price_csv, save_price_csv
 from agent_trading_signal.data.yfinance_provider import download_adjusted_closes
 from agent_trading_signal.portfolio import validate_portfolio_symbols
 from agent_trading_signal.reporting.excel import write_scenario_workbook
+from agent_trading_signal.reporting.history import append_weekly_signal_history
 from agent_trading_signal.reporting.markdown import (
     render_backtest_report,
     render_signal_report,
@@ -38,6 +39,7 @@ DEFAULT_RECOMMENDED_STRATEGY_PATH = Path("config/strategy_recommended.toml")
 DEFAULT_RECOMMENDED_PRICE_PATH = Path("data/market/recommended_prices.csv")
 DEFAULT_PORTFOLIO_PATH = Path("config/current_portfolio.toml")
 DEFAULT_WEEKLY_REPORT_PATH = Path("reports/weekly_decision.md")
+DEFAULT_WEEKLY_HISTORY_PATH = Path("reports/history/weekly_signals.csv")
 
 
 @app.command()
@@ -242,6 +244,10 @@ def weekly_report(
         Path | None,
         typer.Option(help="Optional CSV path where downloaded prices are saved."),
     ] = DEFAULT_RECOMMENDED_PRICE_PATH,
+    history_out: Annotated[
+        Path | None,
+        typer.Option(help="Optional CSV path where the weekly run history is appended."),
+    ] = DEFAULT_WEEKLY_HISTORY_PATH,
     exclude: Annotated[
         list[str] | None,
         typer.Option("--exclude", help="Asset symbol to exclude from this run."),
@@ -272,14 +278,25 @@ def weekly_report(
 
     result = evaluate_relative_strength(price_frame, assets, config.signal)
     data_source = "yfinance download" if download else str(prices)
+    generated_at = datetime.now().astimezone()
     report = render_weekly_decision_report(
         result=result,
         current_allocation=portfolio_config.allocation,
-        generated_at=datetime.now().astimezone(),
+        generated_at=generated_at,
         data_source=data_source,
         min_trade_threshold=min_trade_threshold,
     )
     _write_or_print(report, out)
+    if history_out is not None:
+        append_weekly_signal_history(
+            path=history_out,
+            result=result,
+            current_allocation=portfolio_config.allocation,
+            generated_at=generated_at,
+            data_source=data_source,
+            min_trade_threshold=min_trade_threshold,
+        )
+        typer.echo(f"Appended weekly history to {history_out}")
 
 
 def _load_prices(
