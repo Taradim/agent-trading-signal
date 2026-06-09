@@ -103,6 +103,42 @@ def render_weekly_decision_report(
     return "\n".join(lines)
 
 
+def render_weekly_notification(
+    result: SignalResult,
+    current_allocation: dict[str, float],
+    generated_at: datetime,
+    min_trade_threshold: float = 0.005,
+) -> str:
+    deltas = allocation_deltas(
+        current_allocation=current_allocation,
+        target_allocation=result.allocation,
+        min_trade_threshold=min_trade_threshold,
+    )
+    rebalance_required = needs_rebalance(deltas)
+    data_age_days = (generated_at.date() - result.as_of).days
+    action_lines = [
+        f"{delta.action.upper()} {delta.symbol} {delta.delta:+.2%}"
+        for delta in deltas
+        if delta.action != "hold"
+    ]
+    watchpoints = result.warnings[:3]
+
+    lines = [
+        f"Weekly Trading Signal - {result.as_of.isoformat()}",
+        f"Decision: {'rebalance required' if rebalance_required else 'no trade needed'}",
+        f"Target: {_format_allocation(result.allocation)}",
+        f"Current: {_format_allocation(current_allocation)}",
+        f"Regime: {REGIME_LABELS[result.regime]}",
+        f"Conviction: {result.conviction}",
+        f"Data age: {data_age_days} calendar days",
+    ]
+    if action_lines:
+        lines.append("Trade plan: " + "; ".join(action_lines))
+    if watchpoints:
+        lines.append("Watchpoints: " + "; ".join(watchpoints))
+    return "\n".join(lines)
+
+
 def render_signal_report(result: SignalResult) -> str:
     lines: list[str] = []
     lines.append(f"# Weekly Signal - {result.as_of.isoformat()}")

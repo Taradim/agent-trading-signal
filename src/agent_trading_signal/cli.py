@@ -12,6 +12,10 @@ from agent_trading_signal.backtest.export import write_equity_curve, write_trade
 from agent_trading_signal.backtest.scenarios import research_scenarios, run_scenarios
 from agent_trading_signal.data.csv_prices import load_price_csv, save_price_csv
 from agent_trading_signal.data.yfinance_provider import download_adjusted_closes
+from agent_trading_signal.notifications.telegram import (
+    send_telegram_message,
+    telegram_config_from_env,
+)
 from agent_trading_signal.portfolio import validate_portfolio_symbols
 from agent_trading_signal.reporting.excel import write_scenario_workbook
 from agent_trading_signal.reporting.history import append_weekly_signal_history
@@ -19,6 +23,7 @@ from agent_trading_signal.reporting.markdown import (
     render_backtest_report,
     render_signal_report,
     render_weekly_decision_report,
+    render_weekly_notification,
 )
 from agent_trading_signal.settings import (
     AssetConfig,
@@ -256,6 +261,18 @@ def weekly_report(
         float,
         typer.Option(help="Minimum allocation change shown as a trade."),
     ] = 0.005,
+    notify: Annotated[
+        bool,
+        typer.Option(help="Send a Telegram notification after generating the report."),
+    ] = False,
+    notification_dry_run: Annotated[
+        bool,
+        typer.Option(help="Print the Telegram notification text without sending it."),
+    ] = False,
+    notification_timeout_seconds: Annotated[
+        float,
+        typer.Option(help="Telegram API timeout in seconds."),
+    ] = 10.0,
 ) -> None:
     """Generate the recommended weekly decision report."""
     universe_config = load_universe(universe)
@@ -297,6 +314,30 @@ def weekly_report(
             min_trade_threshold=min_trade_threshold,
         )
         typer.echo(f"Appended weekly history to {history_out}")
+
+    if notify or notification_dry_run:
+        notification = render_weekly_notification(
+            result=result,
+            current_allocation=portfolio_config.allocation,
+            generated_at=generated_at,
+            min_trade_threshold=min_trade_threshold,
+        )
+        if notification_dry_run:
+            typer.echo("")
+            typer.echo("Telegram notification preview:")
+            typer.echo(notification)
+        if notify:
+            try:
+                telegram_config = telegram_config_from_env()
+                send_telegram_message(
+                    config=telegram_config,
+                    text=notification,
+                    timeout_seconds=notification_timeout_seconds,
+                )
+            except (RuntimeError, ValueError) as error:
+                typer.echo(f"Notification failed: {error}", err=True)
+                raise typer.Exit(1) from error
+            typer.echo("Sent Telegram notification")
 
 
 def _load_prices(

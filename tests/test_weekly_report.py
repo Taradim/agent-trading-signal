@@ -1,11 +1,42 @@
 from datetime import date, datetime
 
 from agent_trading_signal.domain import AssetRank, PairStrength, SignalResult, TrendStatus
-from agent_trading_signal.reporting.markdown import render_weekly_decision_report
+from agent_trading_signal.reporting.markdown import (
+    render_weekly_decision_report,
+    render_weekly_notification,
+)
 
 
 def test_weekly_decision_report_shows_trade_plan() -> None:
-    result = SignalResult(
+    report = render_weekly_decision_report(
+        result=_signal_result(),
+        current_allocation={"CASH": 1.0},
+        generated_at=datetime(2026, 5, 31, 9, 0),
+        data_source="test prices",
+    )
+
+    assert "**Decision:** rebalance required" in report
+    assert "| SMH | 0.00% | 100.00% | +100.00% | buy |" in report
+    assert "| CASH | 100.00% | 0.00% | -100.00% | sell |" in report
+    assert "SMA200 entry filter rejects: BTC" in report
+
+
+def test_weekly_notification_is_short_and_actionable() -> None:
+    notification = render_weekly_notification(
+        result=_signal_result(),
+        current_allocation={"CASH": 1.0},
+        generated_at=datetime(2026, 5, 31, 9, 0),
+    )
+
+    assert "Weekly Trading Signal - 2026-05-29" in notification
+    assert "Decision: rebalance required" in notification
+    assert "Target: SMH 100.00%" in notification
+    assert "Trade plan: BUY SMH +100.00%; SELL CASH -100.00%" in notification
+    assert "SMA200 entry filter rejects: BTC" in notification
+
+
+def _signal_result() -> SignalResult:
+    return SignalResult(
         as_of=date(2026, 5, 29),
         allocation={"SMH": 1.0},
         regime="clear_trend",
@@ -44,18 +75,6 @@ def test_weekly_decision_report_shows_trade_plan() -> None:
         ],
         warnings=["SMA200 entry filter rejects: BTC"],
     )
-
-    report = render_weekly_decision_report(
-        result=result,
-        current_allocation={"CASH": 1.0},
-        generated_at=datetime(2026, 5, 31, 9, 0),
-        data_source="test prices",
-    )
-
-    assert "**Decision:** rebalance required" in report
-    assert "| SMH | 0.00% | 100.00% | +100.00% | buy |" in report
-    assert "| CASH | 100.00% | 0.00% | -100.00% | sell |" in report
-    assert "SMA200 entry filter rejects: BTC" in report
 
 
 def _trend(symbol: str) -> TrendStatus:

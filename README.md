@@ -229,6 +229,12 @@ This command downloads fresh recommended-universe prices, saves them to
 `reports/weekly_decision.md`. It also appends a run record to
 `reports/history/weekly_signals.csv`.
 
+To preview the Telegram notification text without sending it:
+
+```bash
+uv run trading-signal weekly-report --notification-dry-run
+```
+
 Update `config/current_portfolio.toml` after manual execution so the next report
 can compare the model target with the actual live allocation:
 
@@ -287,7 +293,8 @@ cd ~/agent-trading-signal
 ```
 
 See [`docs/raspberry_pi.md`](docs/raspberry_pi.md) for setup, manual runs,
-status checks, and log commands.
+Telegram notifications, least-privilege guardrails, status checks, and log
+commands.
 See [`docs/raspberry_pi.md`](docs/raspberry_pi.md).
 
 ## Roadmap
