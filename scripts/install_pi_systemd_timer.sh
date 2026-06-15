@@ -10,6 +10,10 @@ ENV_FILE="$CONFIG_DIR/env"
 mkdir -p "$SYSTEMD_USER_DIR"
 mkdir -p "$CONFIG_DIR"
 
+if command -v loginctl >/dev/null 2>&1; then
+  loginctl enable-linger "$USER"
+fi
+
 if [[ ! -f "$ENV_FILE" ]]; then
   cat >"$ENV_FILE" <<'EOF'
 # Optional notification settings for the weekly Raspberry Pi run.
@@ -39,4 +43,5 @@ systemctl --user enable --now agent-trading-signal-weekly.timer
 echo "Installed agent-trading-signal-weekly.timer"
 echo "Notification environment file: $ENV_FILE"
 echo "Disabled git push URL for origin in this Pi clone"
+echo "Enabled systemd linger for $USER so the timer can run without an SSH session"
 systemctl --user list-timers agent-trading-signal-weekly.timer

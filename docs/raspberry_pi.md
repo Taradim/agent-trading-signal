@@ -5,7 +5,8 @@ weekly scheduler.
 
 The recommended production setup is a user-level `systemd` timer. It is more
 observable than cron, keeps logs in `journalctl`, and can catch up after a reboot
-thanks to `Persistent=true`.
+thanks to `Persistent=true`. The installer also enables systemd lingering for
+the runner user, so the timer can fire even when no SSH session is open.
 
 The Pi should be treated as a production runner, not as a development machine:
 it pulls code, generates reports, and sends notifications. It should not push to
@@ -109,11 +110,18 @@ cd ~/agent-trading-signal
 ./scripts/install_pi_systemd_timer.sh
 ```
 
+The installer enables:
+
+- `agent-trading-signal-weekly.timer`;
+- systemd lingering for the current user with `loginctl enable-linger`;
+- a disabled Git push URL on the Pi clone.
+
 Check the timer:
 
 ```bash
 systemctl --user list-timers agent-trading-signal-weekly.timer
 systemctl --user status agent-trading-signal-weekly.timer
+loginctl show-user "$USER" -p Linger
 ```
 
 Run the job immediately:
@@ -169,6 +177,8 @@ trade decision, conviction, regime, data age, and the top watchpoints.
 The Pi follows least-privilege rules:
 
 - The code repository is a pull-only runtime on the Pi.
+- systemd lingering keeps the user timer active without requiring an open SSH
+  session.
 - `scripts/install_pi_systemd_timer.sh` disables the local Git push URL for
   `origin`, so accidental `git push` commands fail from that clone.
 - The weekly runner uses `git pull --ff-only`; it does not merge, rebase, or
