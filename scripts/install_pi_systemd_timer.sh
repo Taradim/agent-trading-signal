@@ -4,11 +4,14 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 SYSTEMD_USER_DIR="$HOME/.config/systemd/user"
+WEEKLY_SERVICE_DROPIN_DIR="$SYSTEMD_USER_DIR/agent-trading-signal-weekly.service.d"
 CONFIG_DIR="$HOME/.config/agent-trading-signal"
 ENV_FILE="$CONFIG_DIR/env"
 
 mkdir -p "$SYSTEMD_USER_DIR"
+mkdir -p "$WEEKLY_SERVICE_DROPIN_DIR"
 mkdir -p "$CONFIG_DIR"
+mkdir -p "$REPO_DIR/logs"
 
 if command -v loginctl >/dev/null 2>&1; then
   loginctl enable-linger "$USER"
@@ -35,6 +38,9 @@ install -m 0644 \
 install -m 0644 \
   "$REPO_DIR/deploy/systemd/agent-trading-signal-weekly.timer" \
   "$SYSTEMD_USER_DIR/agent-trading-signal-weekly.timer"
+install -m 0644 \
+  "$REPO_DIR/deploy/systemd/agent-trading-signal-weekly-logging.conf" \
+  "$WEEKLY_SERVICE_DROPIN_DIR/logging.conf"
 install -m 0644 \
   "$REPO_DIR/deploy/systemd/agent-trading-signal-healthcheck.service" \
   "$SYSTEMD_USER_DIR/agent-trading-signal-healthcheck.service"

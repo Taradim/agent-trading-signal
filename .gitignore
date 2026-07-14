@@ -7,6 +7,7 @@ __pycache__/
 venv/
 /reports/
 /data/
+/logs/
 config/current_portfolio.local.toml
 .env
 .coverage
