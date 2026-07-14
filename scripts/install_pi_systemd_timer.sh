@@ -35,13 +35,23 @@ install -m 0644 \
 install -m 0644 \
   "$REPO_DIR/deploy/systemd/agent-trading-signal-weekly.timer" \
   "$SYSTEMD_USER_DIR/agent-trading-signal-weekly.timer"
+install -m 0644 \
+  "$REPO_DIR/deploy/systemd/agent-trading-signal-healthcheck.service" \
+  "$SYSTEMD_USER_DIR/agent-trading-signal-healthcheck.service"
+install -m 0644 \
+  "$REPO_DIR/deploy/systemd/agent-trading-signal-healthcheck.timer" \
+  "$SYSTEMD_USER_DIR/agent-trading-signal-healthcheck.timer"
 chmod +x "$REPO_DIR/scripts/run_weekly_report.sh"
+chmod +x "$REPO_DIR/scripts/send_pi_healthcheck.sh"
 
 systemctl --user daemon-reload
 systemctl --user enable --now agent-trading-signal-weekly.timer
+systemctl --user enable --now agent-trading-signal-healthcheck.timer
 
 echo "Installed agent-trading-signal-weekly.timer"
+echo "Installed agent-trading-signal-healthcheck.timer"
 echo "Notification environment file: $ENV_FILE"
 echo "Disabled git push URL for origin in this Pi clone"
 echo "Enabled systemd linger for $USER so the timer can run without an SSH session"
 systemctl --user list-timers agent-trading-signal-weekly.timer
+systemctl --user list-timers agent-trading-signal-healthcheck.timer

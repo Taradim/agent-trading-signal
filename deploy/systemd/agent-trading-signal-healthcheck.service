@@ -1,0 +1,18 @@
+[Unit]
+Description=Agent Trading Signal Raspberry Pi healthcheck notification
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/agent-trading-signal
+Environment=AGENT_TRADING_SIGNAL_REPO_DIR=%h/agent-trading-signal
+EnvironmentFile=-%h/.config/agent-trading-signal/env
+UMask=077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ReadWritePaths=%h/agent-trading-signal %h/.cache %h/.local
+RestrictSUIDSGID=true
+LockPersonality=true
+ExecStart=/usr/bin/env bash %h/agent-trading-signal/scripts/send_pi_healthcheck.sh

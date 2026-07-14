@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.taradim.agent-trading-signal.pi-watchdog</string>
+
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/taradim/CodingProjects/agent-trading-signal/scripts/check_pi_watchdog.sh</string>
+  </array>
+
+  <key>StartCalendarInterval</key>
+  <array>
+    <dict>
+      <key>Hour</key>
+      <integer>9</integer>
+      <key>Minute</key>
+      <integer>5</integer>
+    </dict>
+    <dict>
+      <key>Hour</key>
+      <integer>21</integer>
+      <key>Minute</key>
+      <integer>5</integer>
+    </dict>
+  </array>
+
+  <key>StandardOutPath</key>
+  <string>/Users/taradim/.config/agent-trading-signal/pi_watchdog.launchd.log</string>
+
+  <key>StandardErrorPath</key>
+  <string>/Users/taradim/.config/agent-trading-signal/pi_watchdog.launchd.err</string>
+</dict>
+</plist>
