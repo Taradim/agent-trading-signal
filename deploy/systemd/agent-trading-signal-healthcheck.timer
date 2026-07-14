@@ -1,0 +1,10 @@
+[Unit]
+Description=Send Agent Trading Signal Raspberry Pi healthcheck notification
+
+[Timer]
+OnCalendar=*-*-* 09,21:00:00
+Persistent=true
+Unit=agent-trading-signal-healthcheck.service
+
+[Install]
+WantedBy=timers.target
