@@ -78,6 +78,8 @@ class SignalResult:
     trends: dict[str, TrendStatus]
     pairs: list[PairStrength]
     warnings: list[str]
+    proposed_allocation: dict[str, float] | None = None
+    rotation_note: str | None = None
 
     @property
     def leaders(self) -> list[str]:

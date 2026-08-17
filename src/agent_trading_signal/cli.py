@@ -18,7 +18,11 @@ from agent_trading_signal.notifications.telegram import (
 )
 from agent_trading_signal.portfolio import validate_portfolio_symbols
 from agent_trading_signal.reporting.excel import write_scenario_workbook
-from agent_trading_signal.reporting.history import append_weekly_signal_history
+from agent_trading_signal.reporting.history import (
+    LastModelPosition,
+    append_weekly_signal_history,
+    load_last_model_position,
+)
 from agent_trading_signal.reporting.markdown import (
     render_backtest_report,
     render_signal_report,
@@ -32,6 +36,7 @@ from agent_trading_signal.settings import (
     load_universe,
 )
 from agent_trading_signal.strategy.relative_strength import evaluate_relative_strength
+from agent_trading_signal.strategy.rotation import apply_rotation_policy
 
 app = typer.Typer(help="Relative-strength trading signal toolkit.")
 DEFAULT_UNIVERSE_PATH = Path("config/universe.toml")
@@ -44,7 +49,7 @@ DEFAULT_RECOMMENDED_STRATEGY_PATH = Path("config/strategy_recommended.toml")
 DEFAULT_RECOMMENDED_PRICE_PATH = Path("data/market/recommended_prices.csv")
 DEFAULT_PORTFOLIO_PATH = Path("config/current_portfolio.toml")
 DEFAULT_WEEKLY_REPORT_PATH = Path("reports/weekly_decision.md")
-DEFAULT_WEEKLY_HISTORY_PATH = Path("reports/history/weekly_signals.csv")
+DEFAULT_WEEKLY_HISTORY_PATH = Path("reports/history/model_positions.csv")
 
 
 @app.command()
@@ -235,7 +240,7 @@ def weekly_report(
     ] = DEFAULT_RECOMMENDED_STRATEGY_PATH,
     portfolio: Annotated[
         Path,
-        typer.Option(help="Current portfolio TOML file."),
+        typer.Option(help="One-time bootstrap position when model history is empty."),
     ] = DEFAULT_PORTFOLIO_PATH,
     out: Annotated[
         Path | None,
@@ -277,8 +282,15 @@ def weekly_report(
     """Generate the recommended weekly decision report."""
     universe_config = load_universe(universe)
     config = load_strategy_config(strategy_config)
-    portfolio_config = load_portfolio(portfolio)
-    validate_portfolio_symbols(portfolio_config.allocation, universe_config.symbols)
+    last_position = load_last_model_position(history_out) if history_out is not None else None
+    if last_position is None and portfolio.exists():
+        bootstrap = load_portfolio(portfolio)
+        validate_portfolio_symbols(bootstrap.allocation, universe_config.symbols)
+        last_position = LastModelPosition(
+            allocation=bootstrap.allocation,
+            since=datetime.fromtimestamp(portfolio.stat().st_mtime).astimezone().date(),
+            previous_allocation=None,
+        )
 
     assets = universe_config.active_assets(exclude)
     start = _default_signal_start(config.signal.sma_slow_window)
@@ -293,12 +305,20 @@ def weekly_report(
         save_price_csv(price_frame, prices_out)
         typer.echo(f"Saved {len(price_frame)} rows to {prices_out}")
 
-    result = evaluate_relative_strength(price_frame, assets, config.signal)
+    raw_result = evaluate_relative_strength(price_frame, assets, config.signal)
     data_source = "yfinance download" if download else str(prices)
     generated_at = datetime.now().astimezone()
+    result = apply_rotation_policy(
+        signal=raw_result,
+        incumbent_allocation=last_position.allocation if last_position else None,
+        incumbent_since=last_position.since if last_position else None,
+        evaluation_date=generated_at.date(),
+        signal_config=config.signal,
+        min_holding_days=config.backtest.min_holding_days,
+    )
     report = render_weekly_decision_report(
         result=result,
-        current_allocation=portfolio_config.allocation,
+        last_position=last_position,
         generated_at=generated_at,
         data_source=data_source,
         min_trade_threshold=min_trade_threshold,
@@ -308,7 +328,6 @@ def weekly_report(
         append_weekly_signal_history(
             path=history_out,
             result=result,
-            current_allocation=portfolio_config.allocation,
             generated_at=generated_at,
             data_source=data_source,
             min_trade_threshold=min_trade_threshold,
@@ -318,7 +337,7 @@ def weekly_report(
     if notify or notification_dry_run:
         notification = render_weekly_notification(
             result=result,
-            current_allocation=portfolio_config.allocation,
+            last_position=last_position,
             generated_at=generated_at,
             min_trade_threshold=min_trade_threshold,
         )

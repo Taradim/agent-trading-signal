@@ -79,12 +79,18 @@ conviction in that case, even if it still proposes a target allocation.
 
 ## Holding Period
 
-The backtest uses a preferred minimum holding period of 28 days. It can still
-rotate earlier when:
+Both the live report and backtest use a minimum holding period of 28 days for
+medium- and low-conviction rotations. A challenger must also beat the incumbent
+directly in their pair ratio before a rotation is accepted. A neutral direct
+ratio keeps the incumbent even if the challenger ranks first through indirect
+wins elsewhere in the matrix.
+
+The model can still rotate earlier when:
 
 - the target becomes cash;
 - the current allocation is cash;
-- the new signal has high conviction.
+- the incumbent no longer passes the entry filter;
+- the challenger wins directly and the new signal has high conviction.
 
 This is intentionally simple. It reflects the desired behavior: avoid noisy
 weekly churn, but do not wait through a major leadership break.

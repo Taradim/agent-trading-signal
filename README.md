@@ -224,23 +224,22 @@ uv run trading-signal weekly-report
 ```
 
 This command downloads fresh recommended-universe prices, saves them to
-`data/market/recommended_prices.csv`, reads the current allocation from
-[`config/current_portfolio.toml`](config/current_portfolio.toml), and writes
-`reports/weekly_decision.md`. It also appends a run record to
-`reports/history/weekly_signals.csv`.
+`data/market/recommended_prices.csv`, and writes `reports/weekly_decision.md`.
+It also appends a run record to `reports/history/model_positions.csv`. The report
+compares the new target with the last model position in that history, including
+the date of the last model move; it does not require a manually maintained live
+allocation. When the history is first created, `--portfolio` can seed the initial
+position once; subsequent positions are tracked automatically.
+
+To reduce churn, an eligible position is retained until a challenger beats it
+directly in the ratio matrix. Medium- and low-conviction rotations also require
+at least 28 calendar days in the incumbent position. CASH exits, entries from
+CASH, and replacements of an ineligible incumbent remain immediate.
 
 To preview the Telegram notification text without sending it:
 
 ```bash
 uv run trading-signal weekly-report --notification-dry-run
-```
-
-Update `config/current_portfolio.toml` after manual execution so the next report
-can compare the model target with the actual live allocation:
-
-```toml
-[allocation]
-SMH = 1.0
 ```
 
 To run a longer ETF-only sweep from 2010:

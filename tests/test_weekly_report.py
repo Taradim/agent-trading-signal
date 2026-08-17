@@ -1,6 +1,7 @@
 from datetime import date, datetime
 
 from agent_trading_signal.domain import AssetRank, PairStrength, SignalResult, TrendStatus
+from agent_trading_signal.reporting.history import LastModelPosition
 from agent_trading_signal.reporting.markdown import (
     render_weekly_decision_report,
     render_weekly_notification,
@@ -10,28 +11,41 @@ from agent_trading_signal.reporting.markdown import (
 def test_weekly_decision_report_shows_trade_plan() -> None:
     report = render_weekly_decision_report(
         result=_signal_result(),
-        current_allocation={"CASH": 1.0},
+        last_position=LastModelPosition(
+            allocation={"CASH": 1.0},
+            since=date(2026, 5, 15),
+            previous_allocation={"BTC": 1.0},
+        ),
         generated_at=datetime(2026, 5, 31, 9, 0),
         data_source="test prices",
     )
 
-    assert "**Decision:** rebalance required" in report
+    assert "**Decision:** position change" in report
+    assert "**Last model position:** CASH 100.00% since 2026-05-15 (2 weeks, 2 days)" in report
     assert "| SMH | 0.00% | 100.00% | +100.00% | buy |" in report
     assert "| CASH | 100.00% | 0.00% | -100.00% | sell |" in report
+    assert "SMH ranks first with 1 win and 0 losses (against BTC)." in report
     assert "SMA200 entry filter rejects: BTC" in report
 
 
 def test_weekly_notification_is_short_and_actionable() -> None:
     notification = render_weekly_notification(
         result=_signal_result(),
-        current_allocation={"CASH": 1.0},
+        last_position=LastModelPosition(
+            allocation={"CASH": 1.0},
+            since=date(2026, 5, 15),
+            previous_allocation={"BTC": 1.0},
+        ),
         generated_at=datetime(2026, 5, 31, 9, 0),
     )
 
     assert "Weekly Trading Signal - 2026-05-29" in notification
-    assert "Decision: rebalance required" in notification
+    assert "Decision: position change" in notification
     assert "Target: SMH 100.00%" in notification
-    assert "Trade plan: BUY SMH +100.00%; SELL CASH -100.00%" in notification
+    assert "Current:" not in notification
+    assert "Last position: CASH 100.00% since 2026-05-15 (2 weeks, 2 days)" in notification
+    assert "Move: BUY SMH +100.00%; SELL CASH -100.00%" in notification
+    assert "Why: SMH ranks first with 1 win and 0 losses (against BTC)." in notification
     assert "SMA200 entry filter rejects: BTC" in notification
 
 

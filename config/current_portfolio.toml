@@ -1,5 +1,5 @@
-# Update this file after manual execution so weekly reports can compare the
-# model target with the current live allocation.
+# One-time bootstrap used only when model position history is empty.
+# Accepted positions are tracked automatically after the first run.
 
 [allocation]
 CASH = 1.0
