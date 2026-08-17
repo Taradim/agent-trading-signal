@@ -3,7 +3,10 @@ from datetime import date, datetime
 import pandas as pd
 
 from agent_trading_signal.domain import AssetRank, PairStrength, SignalResult, TrendStatus
-from agent_trading_signal.reporting.history import append_weekly_signal_history
+from agent_trading_signal.reporting.history import (
+    append_weekly_signal_history,
+    load_last_model_position,
+)
 
 
 def test_append_weekly_signal_history_writes_csv_rows(tmp_path) -> None:
@@ -13,24 +16,29 @@ def test_append_weekly_signal_history_writes_csv_rows(tmp_path) -> None:
     append_weekly_signal_history(
         path=path,
         result=result,
-        current_allocation={"CASH": 1.0},
         generated_at=datetime(2026, 6, 9, 22, 0),
         data_source="test prices",
     )
     append_weekly_signal_history(
         path=path,
         result=result,
-        current_allocation={"SMH": 1.0},
         generated_at=datetime(2026, 6, 9, 22, 1),
         data_source="test prices",
     )
 
     rows = pd.read_csv(path)
 
-    assert list(rows["decision"]) == ["rebalance_required", "no_trade_needed"]
+    assert list(rows["decision"]) == ["initial_signal", "no_position_change"]
     assert list(rows["target_allocation"]) == ["SMH:1.000000", "SMH:1.000000"]
+    assert rows["current_allocation"].isna().all()
     assert rows.loc[0, "leaders"] == "SMH"
     assert rows.loc[0, "top_rank"] == "SMH"
+
+    last_position = load_last_model_position(path)
+    assert last_position is not None
+    assert last_position.allocation == {"SMH": 1.0}
+    assert last_position.since == date(2026, 6, 9)
+    assert last_position.previous_allocation is None
 
 
 def _signal_result() -> SignalResult:

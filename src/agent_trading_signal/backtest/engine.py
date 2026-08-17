@@ -13,6 +13,7 @@ from agent_trading_signal.domain import (
 )
 from agent_trading_signal.settings import AssetConfig, BacktestConfig, SignalConfig
 from agent_trading_signal.strategy.relative_strength import evaluate_relative_strength
+from agent_trading_signal.strategy.rotation import apply_rotation_policy
 
 
 def run_weekly_backtest(
@@ -56,16 +57,17 @@ def run_weekly_backtest(
             )
 
         if current_date in trades_by_execution:
-            signal = trades_by_execution[current_date]
+            raw_signal = trades_by_execution[current_date]
+            signal = apply_rotation_policy(
+                signal=raw_signal,
+                incumbent_allocation=current_allocation,
+                incumbent_since=(last_rebalance_date.date() if last_rebalance_date else None),
+                evaluation_date=current_date.date(),
+                signal_config=signal_config,
+                min_holding_days=backtest_config.min_holding_days,
+            )
             desired_allocation = signal.allocation
-            if _should_execute_trade(
-                current_allocation=current_allocation,
-                desired_allocation=desired_allocation,
-                signal=signal,
-                last_rebalance_date=last_rebalance_date,
-                execution_date=current_date,
-                backtest_config=backtest_config,
-            ):
+            if not _allocations_equal(current_allocation, desired_allocation):
                 turnover = _one_way_turnover(current_allocation, desired_allocation)
                 cost = current_capital * turnover * (total_cost_bps / 10000.0)
                 current_capital -= cost
@@ -164,26 +166,6 @@ def _portfolio_return(day_returns: pd.Series, allocation: dict[str, float]) -> f
     return sum(
         weight * float(day_returns.get(symbol, 0.0)) for symbol, weight in allocation.items()
     )
-
-
-def _should_execute_trade(
-    current_allocation: dict[str, float],
-    desired_allocation: dict[str, float],
-    signal: SignalResult,
-    last_rebalance_date: pd.Timestamp | None,
-    execution_date: pd.Timestamp,
-    backtest_config: BacktestConfig,
-) -> bool:
-    if _allocations_equal(current_allocation, desired_allocation):
-        return False
-    if desired_allocation == {"CASH": 1.0}:
-        return True
-    if last_rebalance_date is None or current_allocation == {"CASH": 1.0}:
-        return True
-    days_held = (execution_date.date() - last_rebalance_date.date()).days
-    if days_held >= backtest_config.min_holding_days:
-        return True
-    return signal.conviction == "high"
 
 
 def _allocations_equal(left: dict[str, float], right: dict[str, float]) -> bool:

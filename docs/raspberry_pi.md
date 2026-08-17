@@ -69,23 +69,19 @@ uv run trading-signal weekly-report
 The weekly report uses the recommended core ETF + BTC configuration, downloads
 fresh prices, writes `data/market/recommended_prices.csv`, and creates
 `reports/weekly_decision.md`. It also appends a machine-readable run record to
-`reports/history/weekly_signals.csv`.
+`reports/history/model_positions.csv`. The bot treats the last target recorded in
+that history as its last model position. Notifications show when that position
+last changed instead of relying on a manually maintained live allocation.
 
-On the Pi, the runner uses `config/current_portfolio.local.toml` by default. It
-is ignored by Git so live allocation changes never dirty the code repository.
-Update it after each manual rebalance so the next run can show whether a trade
-is still needed:
-
-```toml
-[allocation]
-SMH = 1.0
-```
+On the first run after installing this version, the Pi uses
+`config/current_portfolio.local.toml` once to seed the initial model position.
+After that bootstrap, the file does not need to be updated: accepted positions
+and move dates come from `model_positions.csv`.
 
 To preview the phone notification without sending it:
 
 ```bash
 uv run trading-signal weekly-report \
-  --portfolio config/current_portfolio.local.toml \
   --notification-dry-run
 ```
 
@@ -169,8 +165,9 @@ AGENT_TRADING_SIGNAL_TELEGRAM_BOT_TOKEN=123456:replace-me
 AGENT_TRADING_SIGNAL_TELEGRAM_CHAT_ID=123456789
 ```
 
-The weekly notification includes the target allocation, current allocation,
-trade decision, conviction, regime, data age, and the top watchpoints.
+The weekly notification includes the target allocation, last model position and
+move date, the reason for the leader ranking, conviction, regime, data age, and
+the top watchpoints.
 
 ## Safety Model
 
@@ -184,8 +181,7 @@ The Pi follows least-privilege rules:
 - The weekly runner uses `git pull --ff-only`; it does not merge, rebase, or
   force-update code.
 - The runner refuses to pull over local tracked changes.
-- Generated files stay in ignored paths: `data/`, `reports/`, and
-  `config/current_portfolio.local.toml`.
+- Generated files stay in ignored paths: `data/` and `reports/`.
 - Telegram credentials live outside the repo in
   `~/.config/agent-trading-signal/env`.
 

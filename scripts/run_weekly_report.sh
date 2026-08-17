@@ -2,7 +2,7 @@
 set -euo pipefail
 
 REPO_DIR="${AGENT_TRADING_SIGNAL_REPO_DIR:-$HOME/agent-trading-signal}"
-PORTFOLIO_PATH="${AGENT_TRADING_SIGNAL_PORTFOLIO_PATH:-config/current_portfolio.local.toml}"
+BOOTSTRAP_POSITION_PATH="${AGENT_TRADING_SIGNAL_BOOTSTRAP_POSITION_PATH:-config/current_portfolio.local.toml}"
 export PATH="$HOME/.local/bin:$HOME/.cargo/bin:$PATH"
 
 cd "$REPO_DIR"
@@ -80,13 +80,6 @@ if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   fi
 fi
 
-if [[ ! -f "$PORTFOLIO_PATH" ]]; then
-  cp config/current_portfolio.toml "$PORTFOLIO_PATH"
-  chmod 600 "$PORTFOLIO_PATH"
-  echo "Created local portfolio file at $PORTFOLIO_PATH"
-  echo "Update it after manual trades so future reports compare against live allocation."
-fi
-
 NOTIFY_ARGS=()
 case "${AGENT_TRADING_SIGNAL_NOTIFY:-0}" in
   1|true|TRUE|yes|YES)
@@ -95,4 +88,6 @@ case "${AGENT_TRADING_SIGNAL_NOTIFY:-0}" in
 esac
 
 retry_command 3 30 uv sync
-uv run trading-signal weekly-report --portfolio "$PORTFOLIO_PATH" "${NOTIFY_ARGS[@]}"
+uv run trading-signal weekly-report \
+  --portfolio "$BOOTSTRAP_POSITION_PATH" \
+  "${NOTIFY_ARGS[@]}"
